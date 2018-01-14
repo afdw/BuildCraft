@@ -20,7 +20,7 @@ jobs:
         target-branch: master
         skip-cleanup: true
         github-token: $GITHUB_TOKEN
-        keep-history: true
+        keep-history: false
         on:
           branch: 8.0.x
     - stage: checkstyle
