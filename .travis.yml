@@ -16,8 +16,8 @@ jobs:
     - stage: checkstyle
       install: echo "skipping default ./gradlew assemble"
       script: ./gradlew checkstyle
-    - stage: build
-      install: ./gradlew setupCiWorkspace
+    - stage: deploy
+      install: ./gradlew -Dmod_version=snapshot setupCiWorkspace
       script: ./gradlew -Dmod_version=snapshot build
       deploy:
         provider: pages
