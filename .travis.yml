@@ -13,6 +13,12 @@ jobs:
     - stage: build
       install: ./gradlew setupCiWorkspace
       script: ./gradlew build publish
+    - stage: checkstyle
+      install: echo "skipping default ./gradlew assemble"
+      script: ./gradlew checkstyle
+    - stage: build
+      install: ./gradlew setupCiWorkspace
+      script: ./gradlew -Dmod_version=snapshot build
       deploy:
         provider: pages
         local-dir: build/libs
@@ -23,9 +29,6 @@ jobs:
         keep-history: false
         on:
           branch: 8.0.x
-    - stage: checkstyle
-      install: echo "skipping default ./gradlew assemble"
-      script: ./gradlew checkstyle
 
 env:
   global:
