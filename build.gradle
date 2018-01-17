@@ -29,8 +29,6 @@ buildscript {
 }
 
 apply plugin: "net.minecraftforge.gradle.forge" // adds the forge dependency
-apply plugin: 'maven' // for uploading to a maven repo
-apply plugin: 'maven-publish' // for uploading to a maven repo
 apply plugin: "org.ajoberstar.grgit"
 
 if (gradle.startParameter.taskNames.contains("checkstyle")) {
@@ -38,13 +36,13 @@ if (gradle.startParameter.taskNames.contains("checkstyle")) {
 }
 
 if (System.getenv("BUILD_NUMBER") != null) {
-    properties.mod_version += "-${System.getenv("BUILD_NUMBER")}"
+    project.properties.mod_version += "-${System.getenv("BUILD_NUMBER")}"
 }
 if (System.getenv("BUILD_VARIANT") != null) {
-    properties.mod_version += "-${System.getenv("BUILD_VARIANT")}"
+    project.properties.mod_version += "-${System.getenv("BUILD_VARIANT")}"
 }
 
-version = properties.mod_version
+version = project.properties.mod_version
 group= "com.mod-buildcraft"
 archivesBaseName = "buildcraft" // the name that all artifacts will use as a base. artifacts names follow this pattern: [baseName]-[appendix]-[version]-[classifier].[extension]
 
@@ -60,7 +58,7 @@ dependencies {
 }
 
 minecraft {
-    version = properties.mc_version + "-" + properties.forge_version
+    version = project.properties.mc_version + "-" + project.properties.forge_version
     runDir = "run"
 
     // the mappings can be changed at any time, and must be in the following format.
@@ -68,7 +66,7 @@ minecraft {
     // stable_#            stables are built at the discretion of the MCP team.
     // Use non-default mappings at your own risk. they may not always work.
     // simply re-run your setup task after changing the mappings to update your workspace.
-    mappings = properties.mappings_version
+    mappings = project.properties.mappings_version
     // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 
     // replacing stuff in the source
@@ -76,7 +74,7 @@ minecraft {
     replace "\${mcversion}", version
     // Replace @Mod.acceptedMinecraftVersions specially as it has to be a valid version in a dev environment :/
     replace "(gradle_replace_mcversion,)", "[" + version + "]"
-    replace "(gradle_replace_forgeversion,)", "[" + properties.forge_version + ",)"
+    replace "(gradle_replace_forgeversion,)", "[" + project.properties.forge_version + ",)"
 
     // Git versioning stuffs
     if (grgit != null) {
@@ -423,6 +421,9 @@ def sftp(String subPath, Closure antFileset = {}) {
         }
     }
 }
+
+apply plugin: 'maven' // for uploading to a maven repo
+apply plugin: 'maven-publish' // for uploading to a maven repo
 
 publishing {
     repositories {
