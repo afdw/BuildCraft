@@ -29,6 +29,7 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
@@ -488,101 +489,106 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
             return;
         }
 
-        if (!frameBox.isInitialized() || !miningBox.isInitialized()) {
-            return;
-        }
-
-        if (!toCheck.isEmpty()) {
-            for (int i = 0; i < (firstChecked ? 10 : 50); i++) {
-                BlockPos blockPos = toCheck.pollFirst();
-                check(blockPos);
-                toCheck.addLast(blockPos);
-            }
-        }
-
-        if (currentTask != null) {
-            long max = MAX_POWER_PER_TICK;
-            max *= battery.getStored() + max;
-            max /= battery.getCapacity() / 2;
-            max = Math.min(max, MAX_POWER_PER_TICK);
-            debugPowerRate = max;
-            long power = battery.extractPower(0, max);
-            if (currentTask.addPower(power)) {
-                currentTask = null;
-            }
-            sendNetworkUpdate(NET_RENDER_DATA);
-            return;
-        }
-
-        if (!firstChecked) {
-            return;
-        }
-
-        if (!frameBreakBlockPoses.isEmpty()) {
-            BlockPos blockPos = frameBreakBlockPoses.iterator().next();
-            if (canMine(blockPos)) {
-                drillPos = null;
-                currentTask = new TaskBreakBlock(blockPos);
-                sendNetworkUpdate(NET_RENDER_DATA);
-            }
-            check(blockPos);
-            return;
-        }
-
-        if (!framePlaceFramePoses.isEmpty()) {
-            for (BlockPos blockPos : framePoses) {
-                if (!framePlaceFramePoses.contains(blockPos)) {
-                    continue;
-                }
-                check(blockPos);
-                if (!framePlaceFramePoses.contains(blockPos)) {
-                    continue;
-                }
-                drillPos = null;
-                currentTask = new TaskAddFrame(blockPos);
-                sendNetworkUpdate(NET_RENDER_DATA);
+        while (battery.getStored() > 0) {
+            if (!frameBox.isInitialized() || !miningBox.isInitialized()) {
                 return;
             }
-        }
 
-        if (boxIterator == null || drillPos == null) {
-            boxIterator = createBoxIterator();
-            while (canMoveThrough(boxIterator.getCurrent()) || !canMine(boxIterator.getCurrent())
-                || !canMoveTo(boxIterator.getCurrent())) {
-                if (boxIterator.advance() == null) {
-                    break;
-                }
-            }
-            drillPos = new Vec3d(miningBox.closestInsideTo(pos));
-        }
-
-        if (boxIterator != null && boxIterator.hasNext()) {
-            while (canMoveThrough(boxIterator.getCurrent()) || !canMine(boxIterator.getCurrent())
-                || !canMoveTo(boxIterator.getCurrent())) {
-                if (boxIterator.advance() == null) {
-                    break;
+            if (!toCheck.isEmpty()) {
+                for (int i = 0; i < (firstChecked ? 10 : 50); i++) {
+                    BlockPos blockPos = toCheck.pollFirst();
+                    check(blockPos);
+                    toCheck.addLast(blockPos);
                 }
             }
 
-            if (boxIterator.hasNext()) {
-                boolean found = false;
-
-                if (drillPos.squareDistanceTo(new Vec3d(boxIterator.getCurrent())) >= 1) {
-                    currentTask = new TaskMoveDrill(drillPos, new Vec3d(boxIterator.getCurrent()));
-                    found = true;
-                } else if (canMine(boxIterator.getCurrent())) {
-                    currentTask = new TaskBreakBlock(boxIterator.getCurrent());
-                    found = true;
+            if (currentTask != null) {
+                long max = MAX_POWER_PER_TICK;
+                max *= battery.getStored() + max;
+                max /= battery.getCapacity() / 2;
+                max = Math.min(max, MAX_POWER_PER_TICK);
+                max = Math.min(max, currentTask.getTarget() - currentTask.getPower());
+                debugPowerRate = max;
+                long power = battery.extractPower(0, max);
+                if (currentTask.addPower(power)) {
+                    currentTask = null;
                 }
+                sendNetworkUpdate(NET_RENDER_DATA);
+                continue;
+            }
 
-                if (found) {
+            if (!firstChecked) {
+                return;
+            }
+
+            if (!frameBreakBlockPoses.isEmpty()) {
+                BlockPos blockPos = frameBreakBlockPoses.iterator().next();
+                if (canMine(blockPos)) {
+                    drillPos = null;
+                    currentTask = new TaskBreakBlock(blockPos);
                     sendNetworkUpdate(NET_RENDER_DATA);
-                } else {
-                    AxisAlignedBB box = miningBox.getBoundingBox();
-                    if (box.maxX - box.minX == 63 && box.maxZ - box.minZ == 63) {
-                        AdvancementUtil.unlockAdvancement(getOwner().getId(), ADVANCEMENT_COMPLETE);
+                }
+                check(blockPos);
+                return;
+            }
+
+            if (!framePlaceFramePoses.isEmpty()) {
+                for (BlockPos blockPos : framePoses) {
+                    if (!framePlaceFramePoses.contains(blockPos)) {
+                        continue;
+                    }
+                    check(blockPos);
+                    if (!framePlaceFramePoses.contains(blockPos)) {
+                        continue;
+                    }
+                    drillPos = null;
+                    currentTask = new TaskAddFrame(blockPos);
+                    sendNetworkUpdate(NET_RENDER_DATA);
+                    return;
+                }
+            }
+
+            if (boxIterator == null || drillPos == null) {
+                boxIterator = createBoxIterator();
+                while (canMoveThrough(boxIterator.getCurrent()) || !canMine(boxIterator.getCurrent())
+                    || !canMoveTo(boxIterator.getCurrent())) {
+                    if (boxIterator.advance() == null) {
+                        break;
                     }
                 }
+                drillPos = new Vec3d(miningBox.closestInsideTo(pos));
+            }
+
+            if (boxIterator != null && boxIterator.hasNext()) {
+                while (canMoveThrough(boxIterator.getCurrent()) || !canMine(boxIterator.getCurrent())
+                    || !canMoveTo(boxIterator.getCurrent())) {
+                    if (boxIterator.advance() == null) {
+                        break;
+                    }
+                }
+
+                if (boxIterator.hasNext()) {
+                    boolean found = false;
+
+                    if (drillPos.squareDistanceTo(new Vec3d(boxIterator.getCurrent())) >= 1) {
+                        currentTask = new TaskMoveDrill(drillPos, new Vec3d(boxIterator.getCurrent()));
+                        found = true;
+                    } else if (canMine(boxIterator.getCurrent())) {
+                        currentTask = new TaskBreakBlock(boxIterator.getCurrent());
+                        found = true;
+                    }
+
+                    if (found) {
+                        sendNetworkUpdate(NET_RENDER_DATA);
+                    } else {
+                        AxisAlignedBB box = miningBox.getBoundingBox();
+                        if (box.maxX - box.minX == 63 && box.maxZ - box.minZ == 63) {
+                            AdvancementUtil.unlockAdvancement(getOwner().getId(), ADVANCEMENT_COMPLETE);
+                        }
+                    }
+                }
+            } else {
+                break;
             }
         }
     }
@@ -851,7 +857,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
 
         @Override
         public long getTarget() {
-            return BlockUtil.computeBlockBreakPower(world, breakPos);
+            return BlockUtil.computeBlockBreakPower(world, breakPos) / 100;
         }
 
         @Override
@@ -880,7 +886,12 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
                 // drop its contents
                 world.sendBlockBreakProgress(breakPos.hashCode(), breakPos, -1);
                 if (drillPos != null) {
-                    world.destroyBlock(breakPos, true);
+                    IBlockState blockState = world.getBlockState(breakPos);
+                    if (!blockState.getBlock().isAir(blockState, world, breakPos)) {
+                        blockState.getBlock().dropBlockAsItem(world, breakPos, blockState, 0);
+                        world.setBlockState(breakPos, Blocks.AIR.getDefaultState(), 3);
+                    }
+//                    world.destroyBlock(breakPos, true);
                     for (EntityItem entity : world.getEntitiesWithinAABB(EntityItem.class,
                         new AxisAlignedBB(breakPos).grow(1))) {
                         TransactorEntityItem transactor = new TransactorEntityItem(entity);
@@ -1016,7 +1027,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
 
         @Override
         public long getTarget() {
-            return (long) (from.distanceTo(to) * 20 * MjAPI.MJ);
+            return (long) (from.distanceTo(to) * 20 * MjAPI.MJ) / 100;
         }
 
         @Override
