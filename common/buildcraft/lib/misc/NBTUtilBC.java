@@ -8,6 +8,7 @@ package buildcraft.lib.misc;
 
 import java.util.BitSet;
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -41,7 +42,8 @@ public final class NBTUtilBC {
         return value == NBTUtilBC.NBT_NULL ? Optional.empty() : Optional.of(value);
     }
 
-    public static NBTBase merge(NBTBase destination, NBTBase source) {
+    @Nullable
+    public static NBTBase merge(@Nullable NBTBase destination, @Nullable NBTBase source) {
         if (source == null) {
             return null;
         }
@@ -62,10 +64,10 @@ public final class NBTUtilBC {
                     } else {
                         result.setTag(
                             key,
-                            merge(
+                            Objects.requireNonNull(merge(
                                 ((NBTTagCompound) destination).getTag(key),
                                 ((NBTTagCompound) source).getTag(key)
-                            )
+                            )) // FIXME: explain nullability problems
                         );
                     }
                 }
@@ -173,6 +175,7 @@ public final class NBTUtilBC {
         return new NBTTagString(value.name());
     }
 
+    @Nullable
     public static <E extends Enum<E>> E readEnum(NBTBase nbt, Class<E> clazz) {
         if (nbt instanceof NBTTagString) {
             String value = ((NBTTagString) nbt).getString();

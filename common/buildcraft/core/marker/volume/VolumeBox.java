@@ -11,10 +11,12 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import javax.annotation.Nullable;
 
 import io.netty.buffer.Unpooled;
 
@@ -31,41 +33,57 @@ import buildcraft.lib.net.PacketBufferBC;
 
 public class VolumeBox {
     public final World world;
-    public UUID id;
-    public Box box;
-    private UUID player = null;
-    private UUID oldPlayer = null;
-    private BlockPos held = null;
-    private double dist = 0;
-    private BlockPos oldMin = null, oldMax = null;
+    public UUID id = UUID.fromString("00000000-0000-0000-0000-000000000000");
+    public Box box = new Box();
+    @Nullable
+    private Change change;
     public final Map<EnumAddonSlot, Addon> addons = new EnumMap<>(EnumAddonSlot.class);
     public final List<Lock> locks = new ArrayList<>();
 
-    public VolumeBox(World world, BlockPos at) {
-        if (world == null) throw new NullPointerException("world");
+    public VolumeBox(World world) {
         this.world = world;
+    }
+
+    public VolumeBox(World world, BlockPos at) {
+        this(world);
         id = UUID.randomUUID();
         box = new Box(at, at);
     }
 
-    public VolumeBox(World world, NBTTagCompound nbt) {
-        if (world == null) throw new NullPointerException("world");
-        this.world = world;
-        id = nbt.getUniqueId("id");
+    public Stream<Lock.Target> getLockTargetsStream() {
+        return locks.stream().flatMap(lock -> lock.targets.stream());
+    }
+
+    public NBTTagCompound writeToNBT() {
+        NBTTagCompound nbt = new NBTTagCompound();
+        nbt.setUniqueId("id", id);
+        nbt.setTag("box", this.box.writeToNBT());
+        if (change != null) {
+            nbt.setTag("change", change.writeToNBT());
+        }
+        nbt.setTag(
+            "addons",
+            NBTUtilBC.writeCompoundList(
+                addons.entrySet().stream().map(entry -> {
+                    NBTTagCompound addonsEntryTag = new NBTTagCompound();
+                    addonsEntryTag.setTag("slot", NBTUtilBC.writeEnum(entry.getKey()));
+                    addonsEntryTag.setString(
+                        "addonClass",
+                        AddonsRegistry.INSTANCE.getNameByClass(entry.getValue().getClass()).toString()
+                    );
+                    addonsEntryTag.setTag("addonData", entry.getValue().writeToNBT(new NBTTagCompound()));
+                    return addonsEntryTag;
+                })
+            ));
+        nbt.setTag("locks", NBTUtilBC.writeCompoundList(locks.stream().map(Lock::writeToNBT)));
+        return nbt;
+    }
+
+    public void readFromNBT(NBTTagCompound nbt) {
+        id = Optional.ofNullable(nbt.getUniqueId("id")).orElseGet(UUID::randomUUID);
         box = new Box();
         box.initialize(nbt.getCompoundTag("box"));
-        player = nbt.hasKey("player") ? NBTUtil.getUUIDFromTag(nbt.getCompoundTag("player")) : null;
-        oldPlayer = nbt.hasKey("oldPlayer") ? NBTUtil.getUUIDFromTag(nbt.getCompoundTag("oldPlayer")) : null;
-        if (nbt.hasKey("held")) {
-            held = NBTUtil.getPosFromTag(nbt.getCompoundTag("held"));
-        }
-        dist = nbt.getDouble("dist");
-        if (nbt.hasKey("oldMin")) {
-            oldMin = NBTUtil.getPosFromTag(nbt.getCompoundTag("oldMin"));
-        }
-        if (nbt.hasKey("oldMax")) {
-            oldMax = NBTUtil.getPosFromTag(nbt.getCompoundTag("oldMax"));
-        }
+        change = nbt.hasKey("change") ? new Change(nbt.getCompoundTag("change")) : null;
         NBTUtilBC.readCompoundList(nbt.getTag("addons")).forEach(addonsEntryTag -> {
             Class<? extends Addon> addonClass =
                 AddonsRegistry.INSTANCE.getClassByName(new ResourceLocation(addonsEntryTag.getString("addonClass")));
@@ -87,130 +105,12 @@ public class VolumeBox {
         }).forEach(locks::add);
     }
 
-    public VolumeBox(World world, PacketBufferBC buf) throws IOException {
-        if (world == null) throw new NullPointerException("world");
-        this.world = world;
-        fromBytes(buf);
-    }
-
-    @SuppressWarnings("WeakerAccess")
-    public boolean isEditing() {
-        return player != null;
-    }
-
-    private void resetEditing() {
-        oldMin = oldMax = null;
-        held = null;
-        dist = 0;
-    }
-
-    public void cancelEditing() {
-        player = null;
-        box.reset();
-        box.extendToEncompass(oldMin);
-        box.extendToEncompass(oldMax);
-        resetEditing();
-    }
-
-    public void confirmEditing() {
-        player = null;
-        resetEditing();
-        addons.values().forEach(Addon::onVolumeBoxSizeChange);
-    }
-
-    @SuppressWarnings("WeakerAccess")
-    public void pauseEditing() {
-        oldPlayer = player;
-        player = null;
-    }
-
-    public void resumeEditing() {
-        player = oldPlayer;
-        oldPlayer = null;
-    }
-
-    public void setPlayer(EntityPlayer player) {
-        this.player = player.getGameProfile().getId();
-    }
-
-    public boolean isEditingBy(EntityPlayer player) {
-        return player != null && Objects.equals(this.player, player.getGameProfile().getId());
-    }
-
-    public boolean isPausedEditingBy(EntityPlayer player) {
-        return oldPlayer != null && Objects.equals(oldPlayer, player.getGameProfile().getId());
-    }
-
-    @SuppressWarnings("WeakerAccess")
-    public EntityPlayer getPlayer(World world) {
-        return world.getPlayerEntityByUUID(player);
-    }
-
-    public void setHeldDistOldMinOldMax(BlockPos held, double dist, BlockPos oldMin, BlockPos oldMax) {
-        this.held = held;
-        this.dist = dist;
-        this.oldMin = oldMin;
-        this.oldMax = oldMax;
-    }
-
-    @SuppressWarnings("WeakerAccess")
-    public BlockPos getHeld() {
-        return held;
-    }
-
-    @SuppressWarnings("WeakerAccess")
-    public double getDist() {
-        return dist;
-    }
-
-    public Stream<Lock.Target> getLockTargetsStream() {
-        return locks.stream().flatMap(lock -> lock.targets.stream());
-    }
-
-    public NBTTagCompound writeToNBT() {
-        NBTTagCompound nbt = new NBTTagCompound();
-        nbt.setUniqueId("id", id);
-        nbt.setTag("box", this.box.writeToNBT());
-        if (player != null) {
-            nbt.setTag("player", NBTUtil.createUUIDTag(player));
-        }
-        if (oldPlayer != null) {
-            nbt.setTag("oldPlayer", NBTUtil.createUUIDTag(oldPlayer));
-        }
-        if (held != null) {
-            nbt.setTag("held", NBTUtil.createPosTag(held));
-        }
-        nbt.setDouble("dist", dist);
-        if (oldMin != null) {
-            nbt.setTag("oldMin", NBTUtil.createPosTag(oldMin));
-        }
-        if (oldMax != null) {
-            nbt.setTag("oldMax", NBTUtil.createPosTag(oldMax));
-        }
-        nbt.setTag(
-            "addons",
-            NBTUtilBC.writeCompoundList(
-                addons.entrySet().stream().map(entry -> {
-                    NBTTagCompound addonsEntryTag = new NBTTagCompound();
-                    addonsEntryTag.setTag("slot", NBTUtilBC.writeEnum(entry.getKey()));
-                    addonsEntryTag.setString(
-                        "addonClass",
-                        AddonsRegistry.INSTANCE.getNameByClass(entry.getValue().getClass()).toString()
-                    );
-                    addonsEntryTag.setTag("addonData", entry.getValue().writeToNBT(new NBTTagCompound()));
-                    return addonsEntryTag;
-                })
-            ));
-        nbt.setTag("locks", NBTUtilBC.writeCompoundList(locks.stream().map(Lock::writeToNBT)));
-        return nbt;
-    }
-
     public void toBytes(PacketBufferBC buf) {
         buf.writeUniqueId(id);
         box.writeData(buf);
-        buf.writeBoolean(player != null);
-        if (player != null) {
-            buf.writeUniqueId(player);
+        buf.writeBoolean(change != null);
+        if (change != null) {
+            change.toBytes(buf);
         }
         buf.writeInt(addons.size());
         addons.forEach((slot, addon) -> {
@@ -226,12 +126,12 @@ public class VolumeBox {
         id = buf.readUniqueId();
         box = new Box();
         box.readData(buf);
-        player = buf.readBoolean() ? buf.readUniqueId() : null;
+        change = buf.readBoolean() ? new Change(buf) : null;
         Map<EnumAddonSlot, Addon> newAddons = new EnumMap<>(EnumAddonSlot.class);
         int count = buf.readInt();
         for (int i = 0; i < count; i++) {
             EnumAddonSlot slot = buf.readEnumValue(EnumAddonSlot.class);
-            ResourceLocation rl = new ResourceLocation(buf.readString(1024));
+            ResourceLocation rl = new ResourceLocation(buf.readString());
             Class<? extends Addon> addonClass = AddonsRegistry.INSTANCE.getClassByName(rl);
             try {
                 if (addonClass == null) {
@@ -243,7 +143,7 @@ public class VolumeBox {
                 addon.fromBytes(buf);
                 newAddons.put(slot, addon);
             } catch (InstantiationException | IllegalAccessException e) {
-                throw new IOException("Failed to deserialize addon!", e);
+                throw new IOException("Failed to deserialize addon", e);
             }
         }
         addons.keySet().removeIf(slot -> !newAddons.containsKey(slot));
@@ -262,14 +162,113 @@ public class VolumeBox {
         }).forEach(locks::add);
     }
 
+    @Nullable
+    public Change getChange() {
+        return change;
+    }
+
+    public void startChange(Change change) {
+        this.change = change;
+    }
+
     @Override
     public boolean equals(Object o) {
         return this == o || !(o == null || getClass() != o.getClass()) && id.equals(((VolumeBox) o).id);
-
     }
 
     @Override
     public int hashCode() {
         return id.hashCode();
+    }
+
+    public class Change {
+        private final UUID playerId;
+        private final BlockPos oldMin, oldMax;
+        private final BlockPos held;
+        private final double dist;
+        private boolean paused = false;
+
+        public Change(UUID playerId, BlockPos oldMin, BlockPos oldMax, BlockPos held, double dist) {
+            this.playerId = playerId;
+            this.oldMin = oldMin;
+            this.oldMax = oldMax;
+            this.held = held;
+            this.dist = dist;
+        }
+
+        public Change(PacketBufferBC buf) {
+            playerId = buf.readUniqueId();
+            oldMin = buf.readBlockPos();
+            oldMax = buf.readBlockPos();
+            held = buf.readBlockPos();
+            dist = buf.readDouble();
+            paused = buf.readBoolean();
+        }
+
+        public Change(NBTTagCompound nbt) {
+            playerId = NBTUtil.getUUIDFromTag(nbt.getCompoundTag("playerId"));
+            oldMin = NBTUtil.getPosFromTag(nbt.getCompoundTag("oldMin"));
+            oldMax = NBTUtil.getPosFromTag(nbt.getCompoundTag("oldMax"));
+            held = NBTUtil.getPosFromTag(nbt.getCompoundTag("held"));
+            dist = nbt.getDouble("dist");
+            paused = nbt.getBoolean("paused");
+        }
+
+        public void cancel() {
+            box.reset();
+            box.extendToEncompass(oldMin);
+            box.extendToEncompass(oldMax);
+            change = null;
+        }
+
+        public void confirm() {
+            addons.values().forEach(Addon::onVolumeBoxSizeChange);
+            change = null;
+        }
+
+        public UUID getPlayerId() {
+            return playerId;
+        }
+
+        public BlockPos getHeld() {
+            return held;
+        }
+
+        public double getDist() {
+            return dist;
+        }
+
+        public boolean isPaused() {
+            return paused;
+        }
+
+        public void setPaused(boolean paused) {
+            this.paused = paused;
+        }
+
+        @Nullable
+        public EntityPlayer getPlayer(World world) {
+            return !paused ? world.getPlayerEntityByUUID(playerId) : null;
+        }
+
+        public NBTTagCompound writeToNBT() {
+            NBTTagCompound nbt = new NBTTagCompound();
+            nbt.setTag("playerId", NBTUtil.createUUIDTag(playerId));
+            nbt.setTag("oldMin", NBTUtil.createPosTag(oldMin));
+            nbt.setTag("oldMax", NBTUtil.createPosTag(oldMax));
+            nbt.setTag("held", NBTUtil.createPosTag(held));
+            nbt.setDouble("dist", dist);
+            nbt.setBoolean("paused", paused);
+            return nbt;
+        }
+
+        public void toBytes(PacketBufferBC buf) {
+            buf.writeUniqueId(playerId);
+            buf.writeBlockPos(oldMin);
+            buf.writeBlockPos(oldMax);
+            buf.writeBlockPos(held);
+            buf.writeDouble(dist);
+            buf.writeBoolean(paused);
+        }
     }
 }

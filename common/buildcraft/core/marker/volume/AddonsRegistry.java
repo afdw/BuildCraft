@@ -9,6 +9,8 @@ package buildcraft.core.marker.volume;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.annotation.Nullable;
+
 import net.minecraft.util.ResourceLocation;
 
 public enum AddonsRegistry {
@@ -22,11 +24,16 @@ public enum AddonsRegistry {
         }
     }
 
+    @Nullable
     public Class<? extends Addon> getClassByName(ResourceLocation name) {
         return addonClasses.get(name);
     }
 
     public ResourceLocation getNameByClass(Class<? extends Addon> clazz) {
-        return addonClasses.entrySet().stream().filter(nameClass -> nameClass.getValue().equals(clazz)).findFirst().orElse(null).getKey();
+        return addonClasses.entrySet().stream()
+            .filter(nameClass -> nameClass.getValue().equals(clazz))
+            .findFirst()
+            .orElseThrow(IllegalStateException::new)
+            .getKey();
     }
 }

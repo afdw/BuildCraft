@@ -7,7 +7,10 @@
 package buildcraft.core.item;
 
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
+import javax.annotation.Nullable;
 
 import com.google.common.collect.ImmutableList;
 
@@ -91,7 +94,10 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
 
         WorldSavedDataVolumeBoxes volumeBoxes = WorldSavedDataVolumeBoxes.get(world);
 
-        VolumeBox currentEditing = volumeBoxes.getCurrentEditing(player);
+        VolumeBox currentChanging = volumeBoxes.getCurrentChanging(player);
+        if (currentChanging != null) {
+            Objects.requireNonNull(currentChanging.getChange());
+        }
 
         Vec3d start = player.getPositionVector().addVector(0, player.getEyeHeight(), 0);
         Vec3d end = start.add(player.getLookVec().scale(4));
@@ -117,7 +123,7 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
                 }
             }
         } else if (player.isSneaking()) {
-            if (currentEditing == null) {
+            if (currentChanging == null) {
                 for (Iterator<VolumeBox> iterator = volumeBoxes.volumeBoxes.iterator(); iterator.hasNext();) {
                     VolumeBox volumeBox = iterator.next();
                     if (volumeBox.box.getBoundingBox().calculateIntercept(start, end) != null) {
@@ -132,12 +138,12 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
                     }
                 }
             } else {
-                currentEditing.cancelEditing();
+                currentChanging.getChange().cancel();
                 volumeBoxes.markDirty();
                 return EnumActionResult.SUCCESS;
             }
         } else {
-            if (currentEditing == null) {
+            if (currentChanging == null) {
                 VolumeBox bestVolumeBox = null;
                 double bestDist = Double.MAX_VALUE;
                 BlockPos editing = null;
@@ -164,11 +170,8 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
                 }
 
                 if (bestVolumeBox != null) {
-                    bestVolumeBox.setPlayer(player);
-
                     BlockPos min = bestVolumeBox.box.min();
                     BlockPos max = bestVolumeBox.box.max();
-
                     BlockPos held = min;
                     if (editing.getX() == min.getX()) {
                         held = VecUtil.replaceValue(held, EnumFacing.Axis.X, max.getX());
@@ -179,17 +182,20 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
                     if (editing.getZ() == min.getZ()) {
                         held = VecUtil.replaceValue(held, EnumFacing.Axis.Z, max.getZ());
                     }
-                    bestVolumeBox.setHeldDistOldMinOldMax(
-                        held,
-                        Math.max(1.5, bestDist + 0.5),
-                        bestVolumeBox.box.min(),
-                        bestVolumeBox.box.max()
+                    bestVolumeBox.startChange(
+                        bestVolumeBox.new Change(
+                            player.getUniqueID(),
+                            min,
+                            max,
+                            held,
+                            Math.max(1.5, bestDist + 0.5)
+                        )
                     );
                     volumeBoxes.markDirty();
                     return EnumActionResult.SUCCESS;
                 }
             } else {
-                currentEditing.confirmEditing();
+                currentChanging.getChange().confirm();
                 volumeBoxes.markDirty();
                 return EnumActionResult.SUCCESS;
             }
@@ -221,7 +227,7 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
             return distToPoint <= 3 && distToLine < 0.3;
         }
 
-        public MarkerLineInteraction getBetter(MarkerLineInteraction other) {
+        public MarkerLineInteraction getBetter(@Nullable MarkerLineInteraction other) {
             if (other == null) {
                 return this;
             }

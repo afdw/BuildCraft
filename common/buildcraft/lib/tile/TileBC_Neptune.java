@@ -111,6 +111,7 @@ public abstract class TileBC_Neptune extends TileEntity implements IPayloadRecei
 
     /** Handles all of the players that are currently using this tile (have a GUI open) */
     private final Set<EntityPlayer> usingPlayers = Sets.newIdentityHashSet();
+    @Nullable
     private GameProfile owner;
 
     protected final DeltaManager deltaManager = new DeltaManager((gui, type, writer) -> {

@@ -16,7 +16,6 @@ import net.minecraft.entity.player.EntityPlayer;
 
 import buildcraft.lib.client.render.DetachedRenderer;
 import buildcraft.lib.client.render.laser.LaserBoxRenderer;
-import buildcraft.lib.client.render.laser.LaserData_BC8.LaserType;
 
 import buildcraft.core.client.BuildCraftLaserManager;
 import buildcraft.core.marker.volume.Addon;
@@ -37,19 +36,17 @@ public enum RenderVolumeBoxes implements DetachedRenderer.IDetachedRenderer {
         bb.begin(GL11.GL_QUADS, DefaultVertexFormats.BLOCK);
 
         ClientVolumeBoxes.INSTANCE.volumeBoxes.forEach(volumeBox -> {
-            LaserType type;
-            if (volumeBox.isEditingBy(player)) {
-                type = BuildCraftLaserManager.MARKER_VOLUME_SIGNAL;
-            } else {
-                type = volumeBox.getLockTargetsStream()
-                    .filter(Lock.Target.TargetUsedByMachine.class::isInstance)
-                    .map(Lock.Target.TargetUsedByMachine.class::cast)
-                    .map(target -> target.type)
-                    .map(Lock.Target.TargetUsedByMachine.EnumType::getLaserType)
-                    .findFirst()
-                    .orElse(BuildCraftLaserManager.MARKER_VOLUME_CONNECTED);
-            }
-            LaserBoxRenderer.renderLaserBoxDynamic(volumeBox.box, type, bb, false);
+            LaserBoxRenderer.renderLaserBoxDynamic(
+                volumeBox.box,
+                volumeBox.getChange() != null ?
+                    BuildCraftLaserManager.MARKER_VOLUME_SIGNAL :
+                    volumeBox.getLockTargetsStream()
+                        .filter(Lock.Target.TargetUsedByMachine.class::isInstance)
+                        .map(target -> ((Lock.Target.TargetUsedByMachine) target).type.getLaserType())
+                        .findFirst().orElse(BuildCraftLaserManager.MARKER_VOLUME_CONNECTED),
+                bb,
+                false
+            );
 
             volumeBox.addons.values().forEach(addon ->
                 ((IFastAddonRenderer<Addon>) addon.getRenderer()).renderAddonFast(addon, player, partialTicks, bb)

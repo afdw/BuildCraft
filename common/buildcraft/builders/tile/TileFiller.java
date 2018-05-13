@@ -8,11 +8,13 @@ package buildcraft.builders.tile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.EntityLivingBase;
@@ -105,6 +107,7 @@ public class TileFiller extends TileBC_Neptune
     private Mode mode = Mode.ON;
 
     public final Box box = new Box();
+    @Nullable
     public AddonFillerPlanner addon;
     public boolean markerBox = true;
 
@@ -113,6 +116,7 @@ public class TileFiller extends TileBC_Neptune
         4,
         (statement, paramIndex) -> onStatementChange()
     );
+    @Nullable
     private BuildingInfo buildingInfo;
     public TemplateBuilder builder = new TemplateBuilder(this);
 
@@ -364,9 +368,9 @@ public class TileFiller extends TileBC_Neptune
         lockedTicks = nbt.getByte("lockedTicks");
         mode = Optional.ofNullable(NBTUtilBC.readEnum(nbt.getTag("mode"), Mode.class)).orElse(Mode.ON);
         box.initialize(nbt.getCompoundTag("box"));
-        if (nbt.hasKey("addonSlot")) {
+        if (nbt.hasKey("addonSlot") && nbt.hasKey("addonVolumeBoxId")) {
             addon = (AddonFillerPlanner) WorldSavedDataVolumeBoxes.get(world)
-                .getVolumeBoxFromId(nbt.getUniqueId("addonVolumeBoxId"))
+                .getVolumeBoxFromId(Objects.requireNonNull(nbt.getUniqueId("addonVolumeBoxId"))) // FIXME: explain nullability problems
                 .addons
                 .get(NBTUtilBC.readEnum(nbt.getTag("addonSlot"), EnumAddonSlot.class));
         }
@@ -417,11 +421,11 @@ public class TileFiller extends TileBC_Neptune
     }
 
     public int getCountToPlace() {
-        return builder == null ? 0 : builder.leftToPlace;
+        return builder.leftToPlace;
     }
 
     public int getCountToBreak() {
-        return builder == null ? 0 : builder.leftToBreak;
+        return builder.leftToBreak;
     }
 
     @Override
@@ -440,7 +444,7 @@ public class TileFiller extends TileBC_Neptune
     }
 
     public boolean isFinished() {
-        return mode != Mode.LOOP && this.finished;
+        return mode != Mode.LOOP && finished;
     }
 
     public boolean isLocked() {
@@ -448,11 +452,13 @@ public class TileFiller extends TileBC_Neptune
     }
 
     @Override
+    @Nullable
     public TemplateBuilder getBuilder() {
         return isValid() ? builder : null;
     }
 
     @Override
+    @Nullable
     public Template.BuildingInfo getTemplateBuildingInfo() {
         return isValid()
             ? addon != null ? addon.buildingInfo : buildingInfo

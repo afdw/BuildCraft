@@ -50,6 +50,7 @@ public class Box implements IBox {
     @SideOnly(Side.CLIENT)
     public LaserType lastType;
 
+    @Nullable
     private BlockPos min, max;
 
     public Box() {
@@ -76,8 +77,8 @@ public class Box implements IBox {
     }
 
     public void extendToEncompassBoth(BlockPos newMin, BlockPos newMax) {
-        this.min = VecUtil.min(this.min, newMin, newMax);
-        this.max = VecUtil.max(this.max, newMin, newMax);
+        this.min = VecUtil.min(min, newMin, newMax);
+        this.max = VecUtil.max(max, newMin, newMax);
     }
 
     public void setMin(BlockPos min) {

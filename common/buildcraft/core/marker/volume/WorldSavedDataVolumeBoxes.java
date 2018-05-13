@@ -8,9 +8,13 @@ package buildcraft.core.marker.volume;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import javax.annotation.Nullable;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
@@ -31,8 +35,9 @@ public class WorldSavedDataVolumeBoxes extends WorldSavedData {
      * and then it calls NBT deserialization method,
      * giving us no chance to set the {@link WorldSavedDataVolumeBoxes#world} field).
      */
+    @Nullable
     private static World currentWorld;
-    public final World world = currentWorld;
+    public final World world = Objects.requireNonNull(currentWorld);
     public final List<VolumeBox> volumeBoxes = new ArrayList<>();
 
     public WorldSavedDataVolumeBoxes() {
@@ -44,6 +49,7 @@ public class WorldSavedDataVolumeBoxes extends WorldSavedData {
         super(name);
     }
 
+    @Nullable
     public VolumeBox getVolumeBoxAt(BlockPos pos) {
         return volumeBoxes.stream().filter(volumeBox -> volumeBox.box.contains(pos)).findFirst().orElse(null);
     }
@@ -52,29 +58,38 @@ public class WorldSavedDataVolumeBoxes extends WorldSavedData {
         volumeBoxes.add(new VolumeBox(world, pos));
     }
 
+    @Nullable
     public VolumeBox getVolumeBoxFromId(UUID id) {
         return volumeBoxes.stream().filter(volumeBox -> volumeBox.id.equals(id)).findFirst().orElse(null);
     }
 
-    public VolumeBox getCurrentEditing(EntityPlayer player) {
-        return volumeBoxes.stream().filter(volumeBox -> volumeBox.isEditingBy(player)).findFirst().orElse(null);
+    @Nullable
+    public VolumeBox getCurrentChanging(EntityPlayer player) {
+        return volumeBoxes.stream()
+            .filter(volumeBox ->
+                Optional.ofNullable(volumeBox.getChange())
+                    .map(change -> change.getPlayerId().equals(player.getUniqueID()))
+                    .orElse(false)
+            )
+            .findFirst()
+            .orElse(null);
     }
 
     public void tick() {
         AtomicBoolean dirty = new AtomicBoolean(false);
-        volumeBoxes.stream().filter(VolumeBox::isEditing).forEach(volumeBox -> {
-            EntityPlayer player = volumeBox.getPlayer(world);
+        volumeBoxes.stream().filter(volumeBox -> volumeBox.getChange() != null).forEach(volumeBox -> {
+            EntityPlayer player = volumeBox.getChange().getPlayer(world);
             if (player == null) {
-                volumeBox.pauseEditing();
+                volumeBox.getChange().setPaused(true);
                 dirty.set(true);
             } else {
                 AxisAlignedBB oldAabb = volumeBox.box.getBoundingBox();
                 volumeBox.box.reset();
-                volumeBox.box.extendToEncompass(volumeBox.getHeld());
+                volumeBox.box.extendToEncompass(volumeBox.getChange().getHeld());
                 BlockPos lookingAt = new BlockPos(
                     player.getPositionVector()
                         .addVector(0, player.getEyeHeight(), 0)
-                        .add(player.getLookVec().scale(volumeBox.getDist()))
+                        .add(player.getLookVec().scale(volumeBox.getChange().getDist()))
                 );
                 volumeBox.box.extendToEncompass(lookingAt);
                 if (!volumeBox.box.getBoundingBox().equals(oldAabb)) {
@@ -114,7 +129,11 @@ public class WorldSavedDataVolumeBoxes extends WorldSavedData {
     public void readFromNBT(NBTTagCompound nbt) {
         volumeBoxes.clear();
         NBTUtilBC.readCompoundList(nbt.getTag("volumeBoxes"))
-            .map(volumeBoxTag -> new VolumeBox(world, volumeBoxTag))
+            .map(volumeBoxTag -> {
+                VolumeBox volumeBox = new VolumeBox(world);
+                volumeBox.readFromNBT(volumeBoxTag);
+                return volumeBox;
+            })
             .forEach(volumeBoxes::add);
     }
 

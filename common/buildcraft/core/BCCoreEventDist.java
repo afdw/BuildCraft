@@ -6,6 +6,8 @@
 
 package buildcraft.core;
 
+import java.util.Objects;
+
 import net.minecraft.entity.player.EntityPlayerMP;
 
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -40,8 +42,10 @@ public enum BCCoreEventDist {
                 )
             );
             WorldSavedDataVolumeBoxes.get(((EntityPlayerMP) event.getEntity()).world).volumeBoxes.stream()
-                .filter(volumeBox -> volumeBox.isPausedEditingBy((EntityPlayerMP) event.getEntity()))
-                .forEach(VolumeBox::resumeEditing);
+                .map(VolumeBox::getChange)
+                .filter(Objects::nonNull)
+                .filter(change -> change.isPaused() && change.getPlayerId().equals(event.getEntity().getUniqueID()))
+                .forEach(change -> change.setPaused(false));
         }
     }
 }
