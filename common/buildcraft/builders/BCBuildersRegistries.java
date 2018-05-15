@@ -22,8 +22,10 @@ public class BCBuildersRegistries {
         TemplateApi.templateRegistry = TemplateRegistry.INSTANCE;
         FillerManager.registry = FillerRegistry.INSTANCE;
 
-        AddonsRegistry.INSTANCE.register(new ResourceLocation("buildcraftbuilders:filler_planner"),
-            AddonFillerPlanner.class);
+        AddonsRegistry.INSTANCE.register(
+            new ResourceLocation("buildcraftbuilders:filler_planner"),
+            AddonFillerPlanner::new
+        );
     }
 
     public static void init() {

@@ -5,7 +5,10 @@
   -->
 
 <root>
-    <item name='java.lang.Class T newInstance()'>
+    <item name='net.minecraftforge.fml.common.network.simpleimpl.IMessage void toBytes(io.netty.buffer.ByteBuf) 0'>
+        <annotation name='javax.annotation.Nonnull'/>
+    </item>
+    <item name='net.minecraftforge.fml.common.network.simpleimpl.IMessage void fromBytes(io.netty.buffer.ByteBuf) 0'>
         <annotation name='javax.annotation.Nonnull'/>
     </item>
 </root>

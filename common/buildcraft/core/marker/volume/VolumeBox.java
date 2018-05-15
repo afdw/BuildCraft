@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -85,17 +86,18 @@ public class VolumeBox {
         box.initialize(nbt.getCompoundTag("box"));
         change = nbt.hasKey("change") ? new Change(nbt.getCompoundTag("change")) : null;
         NBTUtilBC.readCompoundList(nbt.getTag("addons")).forEach(addonsEntryTag -> {
-            Class<? extends Addon> addonClass =
-                AddonsRegistry.INSTANCE.getClassByName(new ResourceLocation(addonsEntryTag.getString("addonClass")));
-            try {
-                Addon addon = addonClass.newInstance();
+            Supplier<? extends Addon> supplier = AddonsRegistry.INSTANCE.getSupplierByName(
+                new ResourceLocation(
+                    addonsEntryTag.getString("addonClass")
+                )
+            );
+            if (supplier != null) {
+                Addon addon = supplier.get();
                 addon.volumeBox = this;
                 addon.readFromNBT(addonsEntryTag.getCompoundTag("addonData"));
                 EnumAddonSlot slot = NBTUtilBC.readEnum(addonsEntryTag.getTag("slot"), EnumAddonSlot.class);
                 addons.put(slot, addon);
                 addon.postReadFromNbt();
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         });
         NBTUtilBC.readCompoundList(nbt.getTag("locks")).map(lockTag -> {
@@ -132,18 +134,13 @@ public class VolumeBox {
         for (int i = 0; i < count; i++) {
             EnumAddonSlot slot = buf.readEnumValue(EnumAddonSlot.class);
             ResourceLocation rl = new ResourceLocation(buf.readString());
-            Class<? extends Addon> addonClass = AddonsRegistry.INSTANCE.getClassByName(rl);
-            try {
-                if (addonClass == null) {
-                    throw new IOException("Unknown addon class " + rl);
-                }
-                Addon addon = addonClass.newInstance();
+            Supplier<? extends Addon> supplier = AddonsRegistry.INSTANCE.getSupplierByName(rl);
+            if (supplier != null) {
+                Addon addon = supplier.get();
                 addon.volumeBox = this;
                 addon.onAdded();
                 addon.fromBytes(buf);
                 newAddons.put(slot, addon);
-            } catch (InstantiationException | IllegalAccessException e) {
-                throw new IOException("Failed to deserialize addon", e);
             }
         }
         addons.keySet().removeIf(slot -> !newAddons.containsKey(slot));

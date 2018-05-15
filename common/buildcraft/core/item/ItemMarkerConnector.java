@@ -47,7 +47,6 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
         super(id);
     }
 
-    @SuppressWarnings("NullableProblems")
     @Override
     public ActionResult<ItemStack> onItemRightClick(World world, EntityPlayer player, EnumHand hand) {
         if (!world.isRemote) {
