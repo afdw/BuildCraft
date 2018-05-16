@@ -126,6 +126,7 @@ public class AxisOrder {
             return getFor(first == AxisDirection.POSITIVE, second == AxisDirection.POSITIVE, third == AxisDirection.POSITIVE);
         }
 
+        @SuppressWarnings("Duplicates")
         public static Inversion getFor(boolean first, boolean second, boolean third) {
             if (first) {
                 if (second) {
