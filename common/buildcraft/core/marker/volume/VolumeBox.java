@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -101,10 +102,13 @@ public class VolumeBox {
             }
         });
         NBTUtilBC.readCompoundList(nbt.getTag("locks")).map(lockTag -> {
-            Lock lock = new Lock();
-            lock.readFromNBT(lockTag);
-            return lock;
-        }).forEach(locks::add);
+            try {
+                return new Lock(lockTag);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }).filter(Objects::nonNull).forEach(locks::add);
     }
 
     public void toBytes(PacketBufferBC buf) {
@@ -152,11 +156,7 @@ public class VolumeBox {
             addons.get(slotAddon.getKey()).fromBytes(buffer);
         }
         locks.clear();
-        IntStream.range(0, buf.readInt()).mapToObj(i -> {
-            Lock lock = new Lock();
-            lock.fromBytes(buf);
-            return lock;
-        }).forEach(locks::add);
+        IntStream.range(0, buf.readInt()).mapToObj(i -> new Lock(buf)).forEach(locks::add);
     }
 
     @Nullable
@@ -231,7 +231,7 @@ public class VolumeBox {
             return held;
         }
 
-        public double getDist() {
+        double getDist() {
             return dist;
         }
 
@@ -244,7 +244,7 @@ public class VolumeBox {
         }
 
         @Nullable
-        public EntityPlayer getPlayer(World world) {
+        EntityPlayer getPlayer(World world) {
             return !paused ? world.getPlayerEntityByUUID(playerId) : null;
         }
 

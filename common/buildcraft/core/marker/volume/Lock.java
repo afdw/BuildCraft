@@ -6,11 +6,14 @@
 
 package buildcraft.core.marker.volume;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import com.google.common.collect.ImmutableList;
 
 import net.minecraft.block.Block;
 import net.minecraft.nbt.NBTTagCompound;
@@ -31,15 +34,33 @@ import buildcraft.lib.net.PacketBufferBC;
 import buildcraft.core.client.BuildCraftLaserManager;
 
 public class Lock {
-    public Cause cause;
-    public List<Target> targets = new ArrayList<>();
-
-    public Lock() {
-    }
+    final Cause cause;
+    final List<Target> targets;
 
     public Lock(Cause cause, Target... targets) {
         this.cause = cause;
-        this.targets.addAll(Arrays.asList(targets));
+        this.targets = ImmutableList.copyOf(Arrays.asList(targets));
+    }
+
+    Lock(NBTTagCompound nbt) {
+        NBTTagCompound causeTag = nbt.getCompoundTag("cause");
+        cause = Objects.requireNonNull(
+            NBTUtilBC.readEnum(causeTag.getTag("type"), Cause.EnumCause.class)
+        ).fromNbt.apply(causeTag.getCompoundTag("data"));
+        targets = NBTUtilBC.readCompoundList(nbt.getTag("targets"))
+            .map(targetTag ->
+                Objects.requireNonNull(
+                    NBTUtilBC.readEnum(targetTag.getTag("type"), Target.EnumTarget.class)
+                ).fromNbt.apply(targetTag.getCompoundTag("data"))
+            )
+            .collect(Collectors.toList());
+    }
+
+    Lock(PacketBufferBC buf) {
+        cause = new PacketBufferBC(buf).readEnumValue(Cause.EnumCause.class).fromBytes.apply(buf);
+        targets = IntStream.range(0, buf.readInt())
+            .mapToObj(i -> new PacketBufferBC(buf).readEnumValue(Target.EnumTarget.class).fromBytes.apply(buf))
+            .collect(Collectors.toList());
     }
 
     public NBTTagCompound writeToNBT() {
@@ -57,18 +78,6 @@ public class Lock {
         return nbt;
     }
 
-    public void readFromNBT(NBTTagCompound nbt) {
-        NBTTagCompound causeTag = nbt.getCompoundTag("cause");
-        cause = NBTUtilBC.readEnum(causeTag.getTag("type"), Cause.EnumCause.class).supplier.get();
-        cause.readFromNBT(causeTag.getCompoundTag("data"));
-        NBTUtilBC.readCompoundList(nbt.getTag("targets")).map(targetTag -> {
-            Target target;
-            target = NBTUtilBC.readEnum(targetTag.getTag("type"), Target.EnumTarget.class).supplier.get();
-            target.readFromNBT(targetTag.getCompoundTag("data"));
-            return target;
-        }).forEach(targets::add);
-    }
-
     public void toBytes(PacketBuffer buf) {
         new PacketBufferBC(buf).writeEnumValue(Cause.EnumCause.getForClass(cause.getClass()));
         cause.toBytes(buf);
@@ -79,39 +88,30 @@ public class Lock {
         });
     }
 
-    public void fromBytes(PacketBuffer buf) {
-        cause = new PacketBufferBC(buf).readEnumValue(Cause.EnumCause.class).supplier.get();
-        cause.fromBytes(buf);
-        targets.clear();
-        IntStream.range(0, buf.readInt()).mapToObj(i -> {
-            Target target;
-            target = new PacketBufferBC(buf).readEnumValue(Target.EnumTarget.class).supplier.get();
-            target.fromBytes(buf);
-            return target;
-        }).forEach(targets::add);
-    }
-
     public static abstract class Cause {
         public abstract NBTTagCompound writeToNBT(NBTTagCompound nbt);
 
-        public abstract void readFromNBT(NBTTagCompound nbt);
-
         public abstract void toBytes(PacketBuffer buf);
-
-        public abstract void fromBytes(PacketBuffer buf);
 
         public abstract boolean stillWorks(World world);
 
         public static class CauseBlock extends Cause {
-            public BlockPos pos;
-            public Block block;
-
-            public CauseBlock() {
-            }
+            public final BlockPos pos;
+            public final Block block;
 
             public CauseBlock(BlockPos pos, Block block) {
                 this.pos = pos;
                 this.block = block;
+            }
+
+            private CauseBlock(NBTTagCompound nbt) {
+                pos = NBTUtil.getPosFromTag(nbt.getCompoundTag("pos"));
+                block = Block.REGISTRY.getObject(new ResourceLocation(nbt.getString("block")));
+            }
+
+            private CauseBlock(PacketBuffer buf) {
+                pos = MessageUtil.readBlockPos(buf);
+                block = Block.REGISTRY.getObject(new ResourceLocation(buf.readString(1024)));
             }
 
             @Override
@@ -122,21 +122,9 @@ public class Lock {
             }
 
             @Override
-            public void readFromNBT(NBTTagCompound nbt) {
-                pos = NBTUtil.getPosFromTag(nbt.getCompoundTag("pos"));
-                block = Block.REGISTRY.getObject(new ResourceLocation(nbt.getString("block")));
-            }
-
-            @Override
             public void toBytes(PacketBuffer buf) {
                 MessageUtil.writeBlockPos(buf, pos);
                 buf.writeString(Block.REGISTRY.getNameForObject(block).toString());
-            }
-
-            @Override
-            public void fromBytes(PacketBuffer buf) {
-                pos = MessageUtil.readBlockPos(buf);
-                block = Block.REGISTRY.getObject(new ResourceLocation(buf.readString(1024)));
             }
 
             @Override
@@ -146,19 +134,25 @@ public class Lock {
         }
 
         enum EnumCause {
-            BLOCK(CauseBlock::new);
+            BLOCK(CauseBlock.class, CauseBlock::new, CauseBlock::new);
 
-            public final Supplier<? extends Cause> supplier;
+            public final Class<? extends Cause> clazz;
+            public final Function<NBTTagCompound, ? extends Cause> fromNbt;
+            public final Function<PacketBufferBC, ? extends Cause> fromBytes;
 
-            EnumCause(Supplier<? extends Cause> supplier) {
-                this.supplier = supplier;
+            EnumCause(Class<? extends Cause> clazz,
+                      Function<NBTTagCompound, ? extends Cause> fromNbt,
+                      Function<PacketBufferBC, ? extends Cause> fromBytes) {
+                this.clazz = clazz;
+                this.fromNbt = fromNbt;
+                this.fromBytes = fromBytes;
             }
 
             public static EnumCause getForClass(Class<? extends Cause> clazz) {
                 return Arrays.stream(values())
-                    .filter(enumCause -> enumCause.supplier.get().getClass() == clazz)
+                    .filter(enumCause -> enumCause.clazz == clazz)
                     .findFirst()
-                    .orElse(null);
+                    .orElseThrow(NullPointerException::new);
             }
         }
     }
@@ -166,58 +160,61 @@ public class Lock {
     public static abstract class Target {
         public abstract NBTTagCompound writeToNBT(NBTTagCompound nbt);
 
-        public abstract void readFromNBT(NBTTagCompound nbt);
-
         public abstract void toBytes(PacketBuffer buf);
 
-        public abstract void fromBytes(PacketBuffer buf);
-
         public static class TargetRemove extends Target {
+            public TargetRemove() {
+            }
+
+            private TargetRemove(@SuppressWarnings("unused") NBTTagCompound nbt) {
+            }
+
+            private TargetRemove(@SuppressWarnings("unused") PacketBuffer buf) {
+            }
+
             @Override
             public NBTTagCompound writeToNBT(NBTTagCompound nbt) {
                 return nbt;
             }
 
             @Override
-            public void readFromNBT(NBTTagCompound nbt) {
-            }
-
-            @Override
             public void toBytes(PacketBuffer buf) {
-            }
-
-            @Override
-            public void fromBytes(PacketBuffer buf) {
             }
         }
 
         public static class TargetResize extends Target {
+            public TargetResize() {
+            }
+
+            private TargetResize(@SuppressWarnings("unused") NBTTagCompound nbt) {
+            }
+
+            private TargetResize(@SuppressWarnings("unused") PacketBuffer buf) {
+            }
+
             @Override
             public NBTTagCompound writeToNBT(NBTTagCompound nbt) {
                 return nbt;
             }
 
             @Override
-            public void readFromNBT(NBTTagCompound nbt) {
-            }
-
-            @Override
             public void toBytes(PacketBuffer buf) {
-            }
-
-            @Override
-            public void fromBytes(PacketBuffer buf) {
             }
         }
 
         public static class TargetAddon extends Target {
-            public EnumAddonSlot slot;
-
-            public TargetAddon() {
-            }
+            public final EnumAddonSlot slot;
 
             public TargetAddon(EnumAddonSlot slot) {
                 this.slot = slot;
+            }
+
+            private TargetAddon(NBTTagCompound nbt) {
+                slot = Objects.requireNonNull(NBTUtilBC.readEnum(nbt.getTag("slot"), EnumAddonSlot.class));
+            }
+
+            private TargetAddon(PacketBuffer buf) {
+                slot = new PacketBufferBC(buf).readEnumValue(EnumAddonSlot.class);
             }
 
             @Override
@@ -227,29 +224,24 @@ public class Lock {
             }
 
             @Override
-            public void readFromNBT(NBTTagCompound nbt) {
-                slot = NBTUtilBC.readEnum(nbt.getTag("slot"), EnumAddonSlot.class);
-            }
-
-            @Override
             public void toBytes(PacketBuffer buf) {
                 new PacketBufferBC(buf).writeEnumValue(slot);
-            }
-
-            @Override
-            public void fromBytes(PacketBuffer buf) {
-                slot = new PacketBufferBC(buf).readEnumValue(EnumAddonSlot.class);
             }
         }
 
         public static class TargetUsedByMachine extends Target {
-            public EnumType type;
-
-            public TargetUsedByMachine() {
-            }
+            public final EnumType type;
 
             public TargetUsedByMachine(EnumType type) {
                 this.type = type;
+            }
+
+            private TargetUsedByMachine(NBTTagCompound nbt) {
+                type = Objects.requireNonNull(NBTUtilBC.readEnum(nbt.getTag("type"), EnumType.class));
+            }
+
+            private TargetUsedByMachine(PacketBuffer buf) {
+                type = new PacketBufferBC(buf).readEnumValue(EnumType.class);
             }
 
             @Override
@@ -259,18 +251,8 @@ public class Lock {
             }
 
             @Override
-            public void readFromNBT(NBTTagCompound nbt) {
-                type = NBTUtilBC.readEnum(nbt.getTag("type"), EnumType.class);
-            }
-
-            @Override
             public void toBytes(PacketBuffer buf) {
                 new PacketBufferBC(buf).writeEnumValue(type);
-            }
-
-            @Override
-            public void fromBytes(PacketBuffer buf) {
-                type = new PacketBufferBC(buf).readEnumValue(EnumType.class);
             }
 
             public enum EnumType {
@@ -295,22 +277,28 @@ public class Lock {
         }
 
         enum EnumTarget {
-            REMOVE(TargetRemove::new),
-            RESIZE(TargetResize::new),
-            ADDON(TargetAddon::new),
-            USED_BY_MACHINE(TargetUsedByMachine::new);
+            REMOVE(TargetRemove.class, TargetRemove::new, TargetRemove::new),
+            RESIZE(TargetResize.class, TargetResize::new, TargetResize::new),
+            ADDON(TargetAddon.class, TargetAddon::new, TargetAddon::new),
+            USED_BY_MACHINE(TargetUsedByMachine.class, TargetUsedByMachine::new, TargetUsedByMachine::new);
 
-            public final Supplier<? extends Target> supplier;
+            public final Class<? extends Target> clazz;
+            public final Function<NBTTagCompound, ? extends Target> fromNbt;
+            public final Function<PacketBufferBC, ? extends Target> fromBytes;
 
-            EnumTarget(Supplier<? extends Target> supplier) {
-                this.supplier = supplier;
+            EnumTarget(Class<? extends Target> clazz,
+                       Function<NBTTagCompound, ? extends Target> fromNbt,
+                       Function<PacketBufferBC, ? extends Target> fromBytes) {
+                this.clazz = clazz;
+                this.fromNbt = fromNbt;
+                this.fromBytes = fromBytes;
             }
 
             public static EnumTarget getForClass(Class<? extends Target> clazz) {
                 return Arrays.stream(values())
-                    .filter(enumTarget -> enumTarget.supplier.get().getClass() == clazz)
+                    .filter(enumTarget -> enumTarget.clazz == clazz)
                     .findFirst()
-                    .orElse(null);
+                    .orElseThrow(NullPointerException::new);
             }
         }
     }
