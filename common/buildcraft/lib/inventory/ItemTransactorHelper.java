@@ -7,6 +7,7 @@
 package buildcraft.lib.inventory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
@@ -83,8 +84,7 @@ public class ItemTransactorHelper {
         }
     }
 
-    @Nonnull
-    public static IInjectable getInjectable(ICapabilityProvider provider, EnumFacing face) {
+    public static IInjectable getInjectable(@Nullable ICapabilityProvider provider, EnumFacing face) {
         if (provider == null) {
             return NoSpaceInjectable.INSTANCE;
         }

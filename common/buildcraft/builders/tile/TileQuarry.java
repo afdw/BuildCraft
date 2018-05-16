@@ -89,12 +89,14 @@ import buildcraft.core.tile.TileMarkerVolume;
 
 public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable, IChunkLoadingTile {
     private static final long MAX_POWER_PER_TICK = 64 * MjAPI.MJ;
+    @SuppressWarnings("SpellCheckingInspection")
     private static final ResourceLocation ADVANCEMENT_COMPLETE =
         new ResourceLocation("buildcraftbuilders:diggy_diggy_hole");
 
     private final MjBattery battery = new MjBattery(16000 * MjAPI.MJ);
     public final Box frameBox = new Box();
     private final Box miningBox = new Box();
+    @Nullable
     private BoxIterator boxIterator;
     public final List<BlockPos> framePoses = new ArrayList<>();
     private int frameBoxPosesCount = 0;
@@ -109,9 +111,13 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         )
     );
     private final Set<BlockPos> framePlaceFramePoses = new HashSet<>();
+    @Nullable
     public Task currentTask = null;
+    @Nullable
     public Vec3d drillPos;
+    @Nullable
     public Vec3d clientDrillPos;
+    @Nullable
     public Vec3d prevClientDrillPos;
     private long debugPowerRate = 0;
     public List<AxisAlignedBB> collisionBoxes = ImmutableList.of();
@@ -286,6 +292,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         }
         // noinspection ConstantConditions
         if (min == null || max == null) {
+            // noinspection ConstantConditions
             min = null;
             max = null;
             VolumeSubCache cache = VolumeCache.INSTANCE.getSubCache(getWorld());
@@ -525,7 +532,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
 
         if (!toCheck.isEmpty()) {
             for (int i = 0; i < (firstChecked ? 10 : 50); i++) {
-                BlockPos blockPos = toCheck.pollFirst();
+                BlockPos blockPos = Objects.requireNonNull(toCheck.pollFirst());
                 check(blockPos);
                 toCheck.addLast(blockPos);
             }
@@ -652,7 +659,9 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         battery.deserializeNBT(nbt.getCompoundTag("battery"));
         if (nbt.hasKey("currentTask")) {
             currentTask = EnumTaskType.values()[(int) nbt.getByte("currentTaskId")].supplier.apply(this);
-            currentTask.readFromNBT(nbt.getCompoundTag("currentTaskData"));
+            if (currentTask != null) {
+                currentTask.readFromNBT(nbt.getCompoundTag("currentTaskData"));
+            }
         } else {
             currentTask = null;
         }
@@ -691,11 +700,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
             if (id == NET_RENDER_DATA) {
                 frameBox.readData(buffer);
                 miningBox.readData(buffer);
-                if (buffer.readBoolean()) {
-                    drillPos = MessageUtil.readVec3d(buffer);
-                } else {
-                    drillPos = null;
-                }
+                drillPos = buffer.readBoolean() ? MessageUtil.readVec3d(buffer) : null;
                 if (buffer.readBoolean()) {
                     int taskId = buffer.readByte();
                     Task task = EnumTaskType.values()[taskId].supplier.apply(this);
@@ -849,11 +854,13 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         @Override
         void readFromNBT(NBTTagCompound nbt) {
             super.readFromNBT(nbt);
-            breakPos = NBTUtilBC.readBlockPos(nbt.getTag("breakPos"));
-            if (breakPos == null) {
+            BlockPos readBreakPos = NBTUtilBC.readBlockPos(nbt.getTag("breakPos"));
+            if (readBreakPos == null) {
                 // We failed to read, abort
                 currentTask = null;
+                return;
             }
+            breakPos = readBreakPos;
         }
 
         @Override
@@ -934,11 +941,13 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         @Override
         void readFromNBT(NBTTagCompound nbt) {
             super.readFromNBT(nbt);
-            framePos = NBTUtilBC.readBlockPos(nbt.getTag("framePos"));
-            if (framePos == null) {
+            BlockPos readFramePos = NBTUtilBC.readBlockPos(nbt.getTag("framePos"));
+            if (readFramePos == null) {
                 // We failed to read, abort
                 currentTask = null;
+                return;
             }
+            framePos = readFramePos;
         }
 
         @Override
@@ -1004,12 +1013,15 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         @Override
         void readFromNBT(NBTTagCompound nbt) {
             super.readFromNBT(nbt);
-            from = NBTUtilBC.readVec3d(nbt.getTag("from"));
-            to = NBTUtilBC.readVec3d(nbt.getTag("to"));
-            if (from == null || to == null) {
+            Vec3d readFrom = NBTUtilBC.readVec3d(nbt.getTag("from"));
+            Vec3d readTo = NBTUtilBC.readVec3d(nbt.getTag("to"));
+            if (readFrom == null || readTo == null) {
                 // We failed to read. Abort.
                 currentTask = null;
+                return;
             }
+            from = readFrom;
+            to = readTo;
         }
 
         @Override

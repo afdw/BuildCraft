@@ -14,6 +14,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -36,11 +37,11 @@ import buildcraft.lib.net.MessageMarker;
 import buildcraft.lib.tile.TileMarker;
 
 public abstract class MarkerSubCache<C extends MarkerConnection<C>> {
-    public static final boolean DEBUG_FULL = BCDebugging.shouldDebugComplex("lib.marker.full");
+    static final boolean DEBUG_FULL = BCDebugging.shouldDebugComplex("lib.marker.full");
 
-    public final int cacheId;
-    public final int dimensionId;
-    public final boolean isServer;
+    private final int cacheId;
+    private final int dimensionId;
+    private final boolean isServer;
     private final Map<BlockPos, C> posToConnection = new ConcurrentHashMap<>();
     private final Map<C, Set<BlockPos>> connectionToPos = new ConcurrentHashMap<>();
     private final Map<BlockPos, Optional<TileMarker<C>>> tileCache = new ConcurrentHashMap<>();
@@ -51,7 +52,7 @@ public abstract class MarkerSubCache<C extends MarkerConnection<C>> {
         this.cacheId = cacheId;
     }
 
-    public void onPlayerJoinWorld(EntityPlayerMP player) {
+    void onPlayerJoinWorld(EntityPlayerMP player) {
         if (isServer) {// Sanity Check
             // Send ALL loaded markers
             if (!tileCache.isEmpty()) {
@@ -80,12 +81,7 @@ public abstract class MarkerSubCache<C extends MarkerConnection<C>> {
 
     @Nullable
     public TileMarker<C> getMarker(BlockPos pos) {
-        Optional<TileMarker<C>> op = tileCache.get(pos);
-        if (op == null) {
-            return null;
-        } else {
-            return op.orElse(null);
-        }
+        return Optional.ofNullable(tileCache.get(pos)).flatMap(Function.identity()).orElse(null);
     }
 
     public void loadMarker(BlockPos pos, @Nullable TileMarker<C> marker) {

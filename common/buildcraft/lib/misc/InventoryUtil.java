@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
@@ -75,8 +76,9 @@ public class InventoryUtil {
 
     // Sending items around
 
-    /** @return The leftover stack */
-    @Nonnull
+    /**
+     * @return The leftover stack
+     */
     public static ItemStack addToRandomInventory(World world, BlockPos pos, @Nonnull ItemStack stack) {
         if (stack.isEmpty()) {
             return StackUtil.EMPTY;
@@ -95,12 +97,15 @@ public class InventoryUtil {
         return stack;
     }
 
-    /** Look around the tile given in parameter in all 6 position, tries to add the items to a random injectable tile
+    /**
+     * Look around the tile given in parameter in all 6 position, tries to add the items to a random injectable tile
      * around. Will make sure that the location from which the items are coming from (identified by the from parameter)
-     * isn't used again so that entities doesn't go backwards. Returns true if successful, false otherwise. */
-    @Nonnull
-    public static ItemStack addToRandomInjectable(World world, BlockPos pos, EnumFacing ignore,
-        @Nonnull ItemStack stack) {
+     * isn't used again so that entities doesn't go backwards. Returns true if successful, false otherwise.
+     */
+    public static ItemStack addToRandomInjectable(World world,
+                                                  BlockPos pos,
+                                                  @Nullable EnumFacing ignore,
+                                                  @Nonnull ItemStack stack) {
         if (stack.isEmpty()) {
             return StackUtil.EMPTY;
         }
@@ -108,7 +113,9 @@ public class InventoryUtil {
         Collections.addAll(toTry, EnumFacing.VALUES);
         Collections.shuffle(toTry);
         for (EnumFacing face : toTry) {
-            if (face == ignore) continue;
+            if (face == ignore) {
+                continue;
+            }
             TileEntity tile = world.getTileEntity(pos.offset(face));
             IInjectable injectable = ItemTransactorHelper.getInjectable(tile, face.getOpposite());
             stack = injectable.injectItem(stack, true, face.getOpposite(), null, 0);
@@ -119,15 +126,22 @@ public class InventoryUtil {
         return stack;
     }
 
-    /** Attempts to add the given stack to the best acceptor, in this order: {@link IItemHandler} instances,
-     * {@link IInjectable} instances, and finally dropping it down on the ground. */
-    public static void addToBestAcceptor(World world, BlockPos pos, EnumFacing ignore, @Nonnull ItemStack stack) {
+    /**
+     * Attempts to add the given stack to the best acceptor, in this order: {@link IItemHandler} instances,
+     * {@link IInjectable} instances, and finally dropping it down on the ground.
+     */
+    public static void addToBestAcceptor(World world,
+                                         BlockPos pos,
+                                         @Nullable EnumFacing ignore,
+                                         @Nonnull ItemStack stack) {
         stack = addToRandomInjectable(world, pos, ignore, stack);
         stack = addToRandomInventory(world, pos, stack);
         drop(world, pos, stack);
     }
 
-    /** Adds every stack from src to dst. Doesn't add empty stacks. */
+    /**
+     * Adds every stack from src to dst. Doesn't add empty stacks.
+     */
     public static void addAll(IItemHandler src, NonNullList<ItemStack> dst) {
         for (int i = 0; i < src.getSlots(); i++) {
             ItemStack stack = src.getStackInSlot(i);
@@ -137,8 +151,10 @@ public class InventoryUtil {
         }
     }
 
-    /** Adds the given {@link ItemStack} to the player's inventory, or drops it in front of them if their was not enough
-     * room. */
+    /**
+     * Adds the given {@link ItemStack} to the player's inventory, or drops it in front of them if their was not enough
+     * room.
+     */
     public static void addToPlayer(EntityPlayer player, ItemStack stack) {
         if (player.inventory.addItemStackToInventory(stack)) {
             player.inventoryContainer.detectAndSendChanges();

@@ -8,6 +8,8 @@ package buildcraft.lib.tile;
 
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 import net.minecraft.util.EnumFacing;
 
 import buildcraft.api.tiles.IDebuggable;
@@ -19,7 +21,7 @@ import buildcraft.lib.marker.MarkerSubCache;
 public abstract class TileMarker<C extends MarkerConnection<C>> extends TileBC_Neptune implements IDebuggable {
     public abstract MarkerCache<? extends MarkerSubCache<C>> getCache();
 
-    public MarkerSubCache<C> getLocalCache() {
+    protected MarkerSubCache<C> getLocalCache() {
         return getCache().getSubCache(world);
     }
 
@@ -27,6 +29,7 @@ public abstract class TileMarker<C extends MarkerConnection<C>> extends TileBC_N
      *         parts for the block model. */
     public abstract boolean isActiveForRender();
 
+    @Nullable
     public C getCurrentConnection() {
         return getLocalCache().getConnection(getPos());
     }
