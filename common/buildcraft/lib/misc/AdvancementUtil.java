@@ -38,7 +38,7 @@ public class AdvancementUtil {
 
     public static boolean unlockAdvancement(UUID player, ResourceLocation advancementName) {
         Entity entity = FMLCommonHandler.instance().getMinecraftServerInstance().getEntityFromUuid(player);
-        if (entity != null && entity instanceof EntityPlayerMP) {
+        if (entity instanceof EntityPlayerMP) {
             unlockAdvancement((EntityPlayer) entity, advancementName);
             return true;
         }

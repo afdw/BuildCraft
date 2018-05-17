@@ -9,6 +9,7 @@ package buildcraft.builders.item;
 import buildcraft.builders.addon.AddonFillerPlanner;
 import buildcraft.core.marker.volume.Addon;
 import buildcraft.core.marker.volume.ItemAddon;
+import buildcraft.core.marker.volume.VolumeBox;
 
 public class ItemFillerPlanner extends ItemAddon {
     public ItemFillerPlanner(String id) {
@@ -16,7 +17,7 @@ public class ItemFillerPlanner extends ItemAddon {
     }
 
     @Override
-    public Addon createAddon() {
-        return new AddonFillerPlanner();
+    protected Addon createAddon(VolumeBox volumeBox) {
+        return new AddonFillerPlanner(volumeBox);
     }
 }

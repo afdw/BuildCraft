@@ -18,7 +18,11 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import buildcraft.lib.net.PacketBufferBC;
 
 public abstract class Addon {
-    public VolumeBox volumeBox;
+    public final VolumeBox volumeBox;
+
+    public Addon(VolumeBox volumeBox) {
+        this.volumeBox = volumeBox;
+    }
 
     @SideOnly(Side.CLIENT)
     public abstract IFastAddonRenderer<? extends Addon> getRenderer();
@@ -35,8 +39,7 @@ public abstract class Addon {
         return getSlot().getBoundingBox(volumeBox);
     }
 
-    @SuppressWarnings("WeakerAccess")
-    public boolean canBePlaceInto(VolumeBox volumeBox) {
+    boolean canBePlaceInto(VolumeBox volumeBox) {
         return !(this instanceof ISingleAddon &&
             volumeBox.addons.values().stream().anyMatch(addon -> addon.getClass() == getClass()));
     }

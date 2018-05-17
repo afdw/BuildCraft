@@ -12,15 +12,16 @@ import buildcraft.api.core.IConvertable;
 
 /** Defines a simple reference to an object, that can be retrieved or changed at any time. */
 public interface IReference<T> {
+    @Nullable
     T get();
 
-    void set(T to);
+    void set(@Nullable T to);
 
     boolean canSet(@Nullable T value);
 
     Class<T> getHeldType();
 
-    default void setIfCan(Object value) {
+    default void setIfCan(@Nullable Object value) {
 
         T obj = convertToType(value);
 
@@ -33,7 +34,8 @@ public interface IReference<T> {
         }
     }
 
-    default T convertToType(Object value) {
+    @Nullable
+    default T convertToType(@Nullable Object value) {
         if (getHeldType().isInstance(value)) {
             return getHeldType().cast(value);
         }

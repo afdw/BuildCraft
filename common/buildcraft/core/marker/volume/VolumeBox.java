@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -70,10 +69,12 @@ public class VolumeBox {
                     NBTTagCompound addonsEntryTag = new NBTTagCompound();
                     addonsEntryTag.setTag("slot", NBTUtilBC.writeEnum(entry.getKey()));
                     addonsEntryTag.setString(
-                        "addonClass",
-                        AddonsRegistry.INSTANCE.getNameByClass(entry.getValue().getClass()).toString()
+                        "typeName",
+                        Objects.requireNonNull(
+                            AddonsRegistry.INSTANCE.getAddonTypeByClass(entry.getValue().getClass())
+                        ).name.toString()
                     );
-                    addonsEntryTag.setTag("addonData", entry.getValue().writeToNBT(new NBTTagCompound()));
+                    addonsEntryTag.setTag("data", entry.getValue().writeToNBT(new NBTTagCompound()));
                     return addonsEntryTag;
                 })
             ));
@@ -87,15 +88,14 @@ public class VolumeBox {
         box.initialize(nbt.getCompoundTag("box"));
         change = nbt.hasKey("change") ? new Change(nbt.getCompoundTag("change")) : null;
         NBTUtilBC.readCompoundList(nbt.getTag("addons")).forEach(addonsEntryTag -> {
-            Supplier<? extends Addon> supplier = AddonsRegistry.INSTANCE.getSupplierByName(
+            AddonsRegistry.AddonType addonType = AddonsRegistry.INSTANCE.getAddonTypeByName(
                 new ResourceLocation(
-                    addonsEntryTag.getString("addonClass")
+                    addonsEntryTag.getString("typeName")
                 )
             );
-            if (supplier != null) {
-                Addon addon = supplier.get();
-                addon.volumeBox = this;
-                addon.readFromNBT(addonsEntryTag.getCompoundTag("addonData"));
+            if (addonType != null) {
+                Addon addon = addonType.create.apply(this);
+                addon.readFromNBT(addonsEntryTag.getCompoundTag("data"));
                 EnumAddonSlot slot = NBTUtilBC.readEnum(addonsEntryTag.getTag("slot"), EnumAddonSlot.class);
                 addons.put(slot, addon);
                 addon.postReadFromNbt();
@@ -121,7 +121,11 @@ public class VolumeBox {
         buf.writeInt(addons.size());
         addons.forEach((slot, addon) -> {
             buf.writeEnumValue(slot);
-            buf.writeString(AddonsRegistry.INSTANCE.getNameByClass(addon.getClass()).toString());
+            buf.writeString(
+                Objects.requireNonNull(
+                    AddonsRegistry.INSTANCE.getAddonTypeByClass(addon.getClass())
+                ).name.toString()
+            );
             addon.toBytes(buf);
         });
         buf.writeInt(locks.size());
@@ -137,11 +141,11 @@ public class VolumeBox {
         int count = buf.readInt();
         for (int i = 0; i < count; i++) {
             EnumAddonSlot slot = buf.readEnumValue(EnumAddonSlot.class);
-            ResourceLocation rl = new ResourceLocation(buf.readString());
-            Supplier<? extends Addon> supplier = AddonsRegistry.INSTANCE.getSupplierByName(rl);
-            if (supplier != null) {
-                Addon addon = supplier.get();
-                addon.volumeBox = this;
+            AddonsRegistry.AddonType addonType = AddonsRegistry.INSTANCE.getAddonTypeByName(
+                new ResourceLocation(buf.readString())
+            );
+            if (addonType != null) {
+                Addon addon = addonType.create.apply(this);
                 addon.onAdded();
                 addon.fromBytes(buf);
                 newAddons.put(slot, addon);

@@ -6,9 +6,9 @@
 
 package buildcraft.core.marker.volume;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Supplier;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 
 import javax.annotation.Nullable;
 
@@ -17,24 +17,41 @@ import net.minecraft.util.ResourceLocation;
 public enum AddonsRegistry {
     INSTANCE;
 
-    private final Map<ResourceLocation, Supplier<? extends Addon>> registry = new HashMap<>();
+    private final List<AddonType> registry = new ArrayList<>();
 
-    public void register(ResourceLocation name, Supplier<? extends Addon> supplier) {
-        if (!registry.containsKey(name)) {
-            registry.put(name, supplier);
+    public void register(AddonType addonType) {
+        if (getAddonTypeByName(addonType.name) != null) {
+            registry.add(addonType);
         }
     }
 
     @Nullable
-    public Supplier<? extends Addon> getSupplierByName(ResourceLocation name) {
-        return registry.get(name);
+    public AddonType getAddonTypeByName(ResourceLocation name) {
+        return registry.stream()
+            .filter(addonType -> addonType.name.equals(name))
+            .findFirst()
+            .orElse(null);
     }
 
-    public ResourceLocation getNameByClass(Class<? extends Addon> clazz) {
-        return registry.entrySet().stream()
-            .filter(entry -> entry.getValue().get().getClass().equals(clazz))
+    @Nullable
+    public AddonType getAddonTypeByClass(Class<? extends Addon> clazz) {
+        return registry.stream()
+            .filter(addonType -> addonType.clazz.equals(clazz))
             .findFirst()
-            .orElseThrow(IllegalStateException::new)
-            .getKey();
+            .orElse(null);
+    }
+
+    public static class AddonType {
+        public final ResourceLocation name;
+        public final Class<? extends Addon> clazz;
+        public final Function<VolumeBox, ? extends Addon> create;
+
+        public AddonType(ResourceLocation name,
+                         Class<? extends Addon> clazz,
+                         Function<VolumeBox, ? extends Addon> create) {
+            this.name = name;
+            this.clazz = clazz;
+            this.create = create;
+        }
     }
 }

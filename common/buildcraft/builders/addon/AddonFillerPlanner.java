@@ -34,6 +34,7 @@ import buildcraft.core.marker.volume.Addon;
 import buildcraft.core.marker.volume.AddonDefaultRenderer;
 import buildcraft.core.marker.volume.IFastAddonRenderer;
 import buildcraft.core.marker.volume.ISingleAddon;
+import buildcraft.core.marker.volume.VolumeBox;
 
 public class AddonFillerPlanner extends Addon implements ISingleAddon, IFillerStatementContainer {
     public final FullStatement<IFillerPattern> patternStatement = new FullStatement<>(
@@ -44,6 +45,10 @@ public class AddonFillerPlanner extends Addon implements ISingleAddon, IFillerSt
     public boolean inverted;
     @Nullable
     public Template.BuildingInfo buildingInfo;
+
+    public AddonFillerPlanner(VolumeBox volumeBox) {
+        super(volumeBox);
+    }
 
     public void updateBuildingInfo() {
         buildingInfo = FillerUtil.createBuildingInfo(

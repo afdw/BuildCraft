@@ -22,7 +22,7 @@ public abstract class ItemAddon extends ItemBC_Neptune {
         super(id);
     }
 
-    public abstract Addon createAddon();
+    protected abstract Addon createAddon(VolumeBox volumeBox);
 
     @SuppressWarnings("NullableProblems")
     @Override
@@ -40,9 +40,8 @@ public abstract class ItemAddon extends ItemBC_Neptune {
         EnumAddonSlot slot = selectingVolumeBoxAndSlot.getRight();
         if (volumeBox != null && slot != null) {
             if (!volumeBox.addons.containsKey(slot)) {
-                Addon addon = createAddon();
+                Addon addon = createAddon(volumeBox);
                 if (addon.canBePlaceInto(volumeBox)) {
-                    addon.volumeBox = volumeBox;
                     volumeBox.addons.put(slot, addon);
                     volumeBox.addons.get(slot).onAdded();
                     volumeBoxes.markDirty();

@@ -2,6 +2,8 @@ package buildcraft.silicon.gate;
 
 import java.io.IOException;
 
+import javax.annotation.Nullable;
+
 import net.minecraft.nbt.NBTTagCompound;
 
 import buildcraft.api.core.BCLog;
@@ -34,12 +36,12 @@ public class ActionType extends StatementType<ActionWrapper> {
     }
 
     @Override
-    public ActionWrapper readFromNbt(NBTTagCompound nbt) {
+    public ActionWrapper readFromNbt(@Nullable NBTTagCompound nbt) {
         if (nbt == null) {
             return null;
         }
         String kind = nbt.getString("kind");
-        if (kind == null || kind.isEmpty()) {
+        if (kind.isEmpty()) {
             return null;
         }
         EnumPipePart side = EnumPipePart.fromMeta(nbt.getByte("side"));
@@ -52,7 +54,7 @@ public class ActionType extends StatementType<ActionWrapper> {
     }
 
     @Override
-    public NBTTagCompound writeToNbt(ActionWrapper slot) {
+    public NBTTagCompound writeToNbt(@Nullable ActionWrapper slot) {
         NBTTagCompound nbt = new NBTTagCompound();
         if (slot == null) {
             return nbt;
@@ -63,6 +65,7 @@ public class ActionType extends StatementType<ActionWrapper> {
     }
 
     @Override
+    @Nullable
     public ActionWrapper readFromBuffer(PacketBufferBC buffer) throws IOException {
         if (buffer.readBoolean()) {
             String name = buffer.readString();
@@ -79,7 +82,7 @@ public class ActionType extends StatementType<ActionWrapper> {
     }
 
     @Override
-    public void writeToBuffer(PacketBufferBC buffer, ActionWrapper slot) {
+    public void writeToBuffer(PacketBufferBC buffer, @Nullable ActionWrapper slot) {
         if (slot == null) {
             buffer.writeBoolean(false);
         } else {

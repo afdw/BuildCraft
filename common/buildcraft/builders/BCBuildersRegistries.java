@@ -23,8 +23,11 @@ public class BCBuildersRegistries {
         FillerManager.registry = FillerRegistry.INSTANCE;
 
         AddonsRegistry.INSTANCE.register(
-            new ResourceLocation("buildcraftbuilders:filler_planner"),
-            AddonFillerPlanner::new
+            new AddonsRegistry.AddonType(
+                new ResourceLocation("buildcraftbuilders:filler_planner"),
+                AddonFillerPlanner.class,
+                AddonFillerPlanner::new
+            )
         );
     }
 

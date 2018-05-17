@@ -3,6 +3,8 @@ package buildcraft.lib.statement;
 import java.io.IOException;
 import java.util.Arrays;
 
+import javax.annotation.Nullable;
+
 import net.minecraft.nbt.NBTTagCompound;
 
 import buildcraft.api.statements.IStatement;
@@ -17,12 +19,16 @@ public class FullStatement<S extends IStatement> implements IReference<S> {
     public final StatementType<S> type;
     public final int maxParams;
     public boolean canInteract = true;
+    @Nullable
     private final IStatementChangeListener listener;
     private final IStatementParameter[] params;
     private final ParamRef[] paramRefs;
+    @Nullable
     private S statement;
 
-    public FullStatement(StatementType<S> type, int maxParams, IStatementChangeListener listener) {
+    public FullStatement(StatementType<S> type,
+                         int maxParams,
+                         @Nullable IStatementChangeListener listener) {
         this.type = type;
         this.statement = type.defaultStatement;
         this.listener = listener;
@@ -82,8 +88,7 @@ public class FullStatement<S extends IStatement> implements IReference<S> {
         } else {
             buffer.writeBoolean(true);
             type.writeToBuffer(buffer, statement);
-            for (int p = 0; p < params.length; p++) {
-                IStatementParameter param = params[p];
+            for (IStatementParameter param : params) {
                 StatementTypeParam.INSTANCE.writeToBuffer(buffer, param);
             }
         }
@@ -97,23 +102,19 @@ public class FullStatement<S extends IStatement> implements IReference<S> {
     }
 
     @Override
-    public void set(S to) {
+    public void set(@Nullable S to) {
         statement = to;
         if (statement == null) {
             Arrays.fill(params, null);
             return;
         }
         for (int i = 0; i < params.length; i++) {
-            if (i > statement.maxParameters()) {
-                params[i] = null;
-            } else {
-                params[i] = statement.createParameter(params[i], i);
-            }
+            params[i] = i <= statement.maxParameters() ? statement.createParameter(params[i], i) : null;
         }
     }
 
     @Override
-    public boolean canSet(S value) {
+    public boolean canSet(@Nullable S value) {
         if (value == null) {
             return true;
         }
@@ -121,7 +122,7 @@ public class FullStatement<S extends IStatement> implements IReference<S> {
     }
 
     @Override
-    public S convertToType(Object value) {
+    public S convertToType(@Nullable Object value) {
         S val = IReference.super.convertToType(value);
         if (value != null && val == null) {
             return type.convertToType(value);
@@ -146,17 +147,18 @@ public class FullStatement<S extends IStatement> implements IReference<S> {
         }
 
         @Override
+        @Nullable
         public IStatementParameter get() {
             return array[index];
         }
 
         @Override
-        public void set(IStatementParameter to) {
+        public void set(@Nullable IStatementParameter to) {
             array[index] = to;
         }
 
         @Override
-        public boolean canSet(IStatementParameter value) {
+        public boolean canSet(@Nullable IStatementParameter value) {
             IStatement statement = statementRef.get();
             if (statement == null) {
                 return false;
@@ -176,6 +178,7 @@ public class FullStatement<S extends IStatement> implements IReference<S> {
         return paramRefs[i];
     }
 
+    @Nullable
     public IStatementParameter get(int index) {
         return getParamRef(index).get();
     }
