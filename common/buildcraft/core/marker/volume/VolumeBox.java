@@ -235,10 +235,6 @@ public class VolumeBox {
             return held;
         }
 
-        double getDist() {
-            return dist;
-        }
-
         public boolean isPaused() {
             return paused;
         }
@@ -248,8 +244,19 @@ public class VolumeBox {
         }
 
         @Nullable
-        EntityPlayer getPlayer(World world) {
+        private EntityPlayer getPlayer() {
             return !paused ? world.getPlayerEntityByUUID(playerId) : null;
+        }
+
+        @Nullable
+        BlockPos getLookingAt() {
+            return Optional.ofNullable(getPlayer()).map(player ->
+                new BlockPos(
+                    player.getPositionVector()
+                        .addVector(0, player.getEyeHeight(), 0)
+                        .add(player.getLookVec().scale(dist))
+                )
+            ).orElse(null);
         }
 
         public NBTTagCompound writeToNBT() {

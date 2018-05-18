@@ -78,19 +78,14 @@ public class WorldSavedDataVolumeBoxes extends WorldSavedData {
     public void tick() {
         AtomicBoolean dirty = new AtomicBoolean(false);
         volumeBoxes.stream().filter(volumeBox -> volumeBox.getChange() != null).forEach(volumeBox -> {
-            EntityPlayer player = volumeBox.getChange().getPlayer(world);
-            if (player == null) {
+            BlockPos lookingAt = volumeBox.getChange().getLookingAt();
+            if (lookingAt == null) {
                 volumeBox.getChange().setPaused(true);
                 dirty.set(true);
             } else {
                 AxisAlignedBB oldAabb = volumeBox.box.getBoundingBox();
                 volumeBox.box.reset();
                 volumeBox.box.extendToEncompass(volumeBox.getChange().getHeld());
-                BlockPos lookingAt = new BlockPos(
-                    player.getPositionVector()
-                        .addVector(0, player.getEyeHeight(), 0)
-                        .add(player.getLookVec().scale(volumeBox.getChange().getDist()))
-                );
                 volumeBox.box.extendToEncompass(lookingAt);
                 if (!volumeBox.box.getBoundingBox().equals(oldAabb)) {
                     dirty.set(true);
