@@ -34,58 +34,29 @@ import buildcraft.lib.net.PacketBufferBC;
 
 public class VolumeBox {
     public final World world;
-    public UUID id = UUID.fromString("00000000-0000-0000-0000-000000000000");
-    public Box box = new Box();
+    public final UUID id;
+    public Box box;
     @Nullable
     private Change change;
     public final Map<EnumAddonSlot, Addon> addons = new EnumMap<>(EnumAddonSlot.class);
     public final List<Lock> locks = new ArrayList<>();
 
-    public VolumeBox(World world) {
+    public VolumeBox(World world, PacketBufferBC buf) {
         this.world = world;
+        id = buf.readUniqueId();
+        box = new Box(buf);
     }
 
     public VolumeBox(World world, BlockPos at) {
-        this(world);
+        this.world = world;
         id = UUID.randomUUID();
         box = new Box(at, at);
     }
 
-    public Stream<Lock.Target> getLockTargetsStream() {
-        return locks.stream().flatMap(lock -> lock.targets.stream());
-    }
-
-    public NBTTagCompound writeToNBT() {
-        NBTTagCompound nbt = new NBTTagCompound();
-        nbt.setUniqueId("id", id);
-        nbt.setTag("box", this.box.writeToNBT());
-        if (change != null) {
-            nbt.setTag("change", change.writeToNBT());
-        }
-        nbt.setTag(
-            "addons",
-            NBTUtilBC.writeCompoundList(
-                addons.entrySet().stream().map(entry -> {
-                    NBTTagCompound addonsEntryTag = new NBTTagCompound();
-                    addonsEntryTag.setTag("slot", NBTUtilBC.writeEnum(entry.getKey()));
-                    addonsEntryTag.setString(
-                        "typeName",
-                        Objects.requireNonNull(
-                            AddonsRegistry.INSTANCE.getAddonTypeByClass(entry.getValue().getClass())
-                        ).name.toString()
-                    );
-                    addonsEntryTag.setTag("data", entry.getValue().writeToNBT(new NBTTagCompound()));
-                    return addonsEntryTag;
-                })
-            ));
-        nbt.setTag("locks", NBTUtilBC.writeCompoundList(locks.stream().map(Lock::writeToNBT)));
-        return nbt;
-    }
-
-    public void readFromNBT(NBTTagCompound nbt) {
+    public VolumeBox(World world, NBTTagCompound nbt) {
+        this.world = world;
         id = Optional.ofNullable(nbt.getUniqueId("id")).orElseGet(UUID::randomUUID);
-        box = new Box();
-        box.initialize(nbt.getCompoundTag("box"));
+        box = new Box(nbt.getCompoundTag("box"));
         change = nbt.hasKey("change") ? new Change(nbt.getCompoundTag("change")) : null;
         NBTUtilBC.readCompoundList(nbt.getTag("addons")).forEach(addonsEntryTag -> {
             AddonsRegistry.AddonType addonType = AddonsRegistry.INSTANCE.getAddonTypeByName(
@@ -111,9 +82,40 @@ public class VolumeBox {
         }).filter(Objects::nonNull).forEach(locks::add);
     }
 
+    public Stream<Lock.Target> getLockTargetsStream() {
+        return locks.stream().flatMap(lock -> lock.targets.stream());
+    }
+
+    public NBTTagCompound writeToNBT() {
+        NBTTagCompound nbt = new NBTTagCompound();
+        nbt.setUniqueId("id", id);
+        nbt.setTag("box", this.box.writeToNbt());
+        if (change != null) {
+            nbt.setTag("change", change.writeToNBT());
+        }
+        nbt.setTag(
+            "addons",
+            NBTUtilBC.writeCompoundList(
+                addons.entrySet().stream().map(entry -> {
+                    NBTTagCompound addonsEntryTag = new NBTTagCompound();
+                    addonsEntryTag.setTag("slot", NBTUtilBC.writeEnum(entry.getKey()));
+                    addonsEntryTag.setString(
+                        "typeName",
+                        Objects.requireNonNull(
+                            AddonsRegistry.INSTANCE.getAddonTypeByClass(entry.getValue().getClass())
+                        ).name.toString()
+                    );
+                    addonsEntryTag.setTag("data", entry.getValue().writeToNBT(new NBTTagCompound()));
+                    return addonsEntryTag;
+                })
+            ));
+        nbt.setTag("locks", NBTUtilBC.writeCompoundList(locks.stream().map(Lock::writeToNBT)));
+        return nbt;
+    }
+
     public void toBytes(PacketBufferBC buf) {
         buf.writeUniqueId(id);
-        box.writeData(buf);
+        box.toBytes(buf);
         buf.writeBoolean(change != null);
         if (change != null) {
             change.toBytes(buf);
@@ -133,9 +135,6 @@ public class VolumeBox {
     }
 
     public void fromBytes(PacketBufferBC buf) throws IOException {
-        id = buf.readUniqueId();
-        box = new Box();
-        box.readData(buf);
         change = buf.readBoolean() ? new Change(buf) : null;
         Map<EnumAddonSlot, Addon> newAddons = new EnumMap<>(EnumAddonSlot.class);
         int count = buf.readInt();
@@ -184,23 +183,21 @@ public class VolumeBox {
 
     public class Change {
         private final UUID playerId;
-        private final BlockPos oldMin, oldMax;
+        private final Box oldBox;
         private final BlockPos held;
         private final double dist;
         private boolean paused = false;
 
-        public Change(UUID playerId, BlockPos oldMin, BlockPos oldMax, BlockPos held, double dist) {
+        public Change(UUID playerId, Box oldBox, BlockPos held, double dist) {
             this.playerId = playerId;
-            this.oldMin = oldMin;
-            this.oldMax = oldMax;
+            this.oldBox = oldBox;
             this.held = held;
             this.dist = dist;
         }
 
         public Change(PacketBufferBC buf) {
             playerId = buf.readUniqueId();
-            oldMin = buf.readBlockPos();
-            oldMax = buf.readBlockPos();
+            oldBox = new Box(buf);
             held = buf.readBlockPos();
             dist = buf.readDouble();
             paused = buf.readBoolean();
@@ -208,17 +205,14 @@ public class VolumeBox {
 
         public Change(NBTTagCompound nbt) {
             playerId = NBTUtil.getUUIDFromTag(nbt.getCompoundTag("playerId"));
-            oldMin = NBTUtil.getPosFromTag(nbt.getCompoundTag("oldMin"));
-            oldMax = NBTUtil.getPosFromTag(nbt.getCompoundTag("oldMax"));
+            oldBox = new Box(nbt.getCompoundTag("oldBox"));
             held = NBTUtil.getPosFromTag(nbt.getCompoundTag("held"));
             dist = nbt.getDouble("dist");
             paused = nbt.getBoolean("paused");
         }
 
         public void cancel() {
-            box.reset();
-            box.extendToEncompass(oldMin);
-            box.extendToEncompass(oldMax);
+            box = oldBox;
             change = null;
         }
 
@@ -262,8 +256,7 @@ public class VolumeBox {
         public NBTTagCompound writeToNBT() {
             NBTTagCompound nbt = new NBTTagCompound();
             nbt.setTag("playerId", NBTUtil.createUUIDTag(playerId));
-            nbt.setTag("oldMin", NBTUtil.createPosTag(oldMin));
-            nbt.setTag("oldMax", NBTUtil.createPosTag(oldMax));
+            nbt.setTag("oldBox", oldBox.writeToNbt());
             nbt.setTag("held", NBTUtil.createPosTag(held));
             nbt.setDouble("dist", dist);
             nbt.setBoolean("paused", paused);
@@ -272,8 +265,7 @@ public class VolumeBox {
 
         public void toBytes(PacketBufferBC buf) {
             buf.writeUniqueId(playerId);
-            buf.writeBlockPos(oldMin);
-            buf.writeBlockPos(oldMax);
+            oldBox.toBytes(buf);
             buf.writeBlockPos(held);
             buf.writeDouble(dist);
             buf.writeBoolean(paused);

@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import com.google.common.collect.ImmutableList;
 
@@ -108,7 +109,8 @@ public class TileBuilder extends TileBC_Neptune
     public TemplateBuilder templateBuilder = new TemplateBuilder(this);
     @SuppressWarnings("WeakerAccess")
     public BlueprintBuilder blueprintBuilder = new BlueprintBuilder(this);
-    private Box currentBox = new Box();
+    @Nullable
+    private Box currentBox = null;
     private Rotation rotation = null;
 
     private boolean isDone = false;
@@ -195,9 +197,6 @@ public class TileBuilder extends TileBC_Neptune
             blueprintBuildingInfo = null;
             currentBox = null;
         }
-        if (currentBox == null) {
-            currentBox = new Box();
-        }
     }
 
     private void updateBasePoses() {
@@ -278,7 +277,10 @@ public class TileBuilder extends TileBC_Neptune
                     // noinspection ConstantConditions
                     getBuilder().writeToByteBuf(buffer);
                 }
-                currentBox.writeData(buffer);
+                buffer.writeBoolean(currentBox != null);
+                if (currentBox != null) {
+                    currentBox.toBytes(buffer);
+                }
                 writePayload(NET_CAN_EXCAVATE, buffer, side);
                 writePayload(NET_SNAPSHOT_TYPE, buffer, side);
             }
@@ -315,7 +317,7 @@ public class TileBuilder extends TileBC_Neptune
                 } else {
                     snapshotType = null;
                 }
-                currentBox.readData(buffer);
+                currentBox = buffer.readBoolean() ? new Box(buffer) : null;
                 readPayload(NET_CAN_EXCAVATE, buffer, side, ctx);
                 readPayload(NET_SNAPSHOT_TYPE, buffer, side, ctx);
             }

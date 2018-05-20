@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import gnu.trove.map.hash.TIntObjectHashMap;
 
@@ -237,6 +238,7 @@ public class ItemMapLocation extends ItemBC_Neptune implements IMapLocation {
         return new Box(min, max);
     }
 
+    @Nullable
     public static IBox getPointBox(@Nonnull ItemStack item) {
         NBTTagCompound cpt = NBTUtilBC.getItemData(item);
         MapLocationType type = MapLocationType.getFromStack(item);

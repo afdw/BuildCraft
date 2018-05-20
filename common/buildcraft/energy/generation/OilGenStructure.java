@@ -31,7 +31,7 @@ public abstract class OilGenStructure {
     }
 
     public final void generate(World world, Box within) {
-        Box intersect = box.getIntersect(within);
+        Box intersect = box.intersect(within);
         if (intersect != null) {
             generateWithin(world, intersect);
         }

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.nbt.NBTTagCompound;
@@ -59,7 +60,9 @@ public class TileLaser extends TileBC_Neptune implements ITickable, IDebuggable,
     private final SafeTimeTracker serverTargetMoveInterval = new SafeTimeTracker(10, 20);
 
     private final List<BlockPos> targetPositions = new ArrayList<>();
+    @Nullable
     private BlockPos targetPos;
+    @Nullable
     public Vec3d laserPos;
     private boolean worldHasUpdated = true;
 
@@ -113,7 +116,7 @@ public class TileLaser extends TileBC_Neptune implements ITickable, IDebuggable,
 
     private void randomlyChooseTargetPos() {
         List<BlockPos> targetsNeedingPower = new ArrayList<>();
-        for(BlockPos position: targetPositions) {
+        for (BlockPos position : targetPositions) {
             if (isPowerNeededAt(position)) {
                 targetsNeedingPower.add(position);
             }
@@ -125,7 +128,7 @@ public class TileLaser extends TileBC_Neptune implements ITickable, IDebuggable,
         targetPos = targetsNeedingPower.get(world.rand.nextInt(targetsNeedingPower.size()));
     }
 
-    private boolean isPowerNeededAt(BlockPos position) {
+    private boolean isPowerNeededAt(@Nullable BlockPos position) {
         if (position != null) {
             TileEntity tile = world.getTileEntity(position);
             if (tile instanceof ILaserTarget) {
@@ -136,6 +139,7 @@ public class TileLaser extends TileBC_Neptune implements ITickable, IDebuggable,
         return false;
     }
 
+    @Nullable
     private ILaserTarget getTarget() {
         if (targetPos != null) {
             if (world.getTileEntity(targetPos) instanceof ILaserTarget) {
@@ -146,16 +150,14 @@ public class TileLaser extends TileBC_Neptune implements ITickable, IDebuggable,
     }
 
     private void updateLaser() {
-        if (targetPos != null) {
-            laserPos = new Vec3d(targetPos)
+        laserPos = targetPos != null ?
+            new Vec3d(targetPos)
                 .addVector(
                     (5 + world.rand.nextInt(6) + 0.5) / 16D,
                     9 / 16D,
                     (5 + world.rand.nextInt(6) + 0.5) / 16D
-                );
-        } else {
-            laserPos = null;
-        }
+                ) :
+            null;
     }
 
     public long getAverageClient() {
@@ -262,11 +264,7 @@ public class TileLaser extends TileBC_Neptune implements ITickable, IDebuggable,
         if (side == Side.CLIENT) {
             if (id == NET_RENDER_DATA) {
                 battery.readFromBuffer(buffer);
-                if (buffer.readBoolean()) {
-                    targetPos = MessageUtil.readBlockPos(buffer);
-                } else {
-                    targetPos = null;
-                }
+                targetPos = buffer.readBoolean() ? MessageUtil.readBlockPos(buffer) : null;
                 averageClient = buffer.readLong();
             }
         }
@@ -300,7 +298,9 @@ public class TileLaser extends TileBC_Neptune implements ITickable, IDebuggable,
     @Override
     @SideOnly(Side.CLIENT)
     public AxisAlignedBB getRenderBoundingBox() {
-        return new Box(this).extendToEncompass(targetPos).getBoundingBox();
+        return targetPos != null ?
+            new Box(pos, targetPos).getBoundingBox() :
+            super.getRenderBoundingBox();
     }
 
     @Override

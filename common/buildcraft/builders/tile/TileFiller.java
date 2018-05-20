@@ -106,7 +106,8 @@ public class TileFiller extends TileBC_Neptune
     private byte lockedTicks = 0;
     private Mode mode = Mode.ON;
 
-    public final Box box = new Box();
+    @Nullable
+    public Box box = null;
     @Nullable
     public AddonFillerPlanner addon;
     public boolean markerBox = true;
@@ -159,9 +160,7 @@ public class TileFiller extends TileBC_Neptune
                 addon.updateBuildingInfo();
                 markerBox = false;
             } else {
-                box.reset();
-                box.setMin(volumeBox.box.min());
-                box.setMax(volumeBox.box.max());
+                box = volumeBox.box;
                 volumeBox.locks.add(
                     new Lock(
                         new Lock.Cause.CauseBlock(pos, blockState.getBlock()),
@@ -177,9 +176,7 @@ public class TileFiller extends TileBC_Neptune
             }
         } else if (tile instanceof IAreaProvider) {
             IAreaProvider provider = (IAreaProvider) tile;
-            box.reset();
-            box.setMin(provider.min());
-            box.setMax(provider.max());
+            box = new Box(provider);
             provider.removeFromWorld();
         }
         updateBuildingInfo();
@@ -247,7 +244,10 @@ public class TileFiller extends TileBC_Neptune
                 buffer.writeBoolean(lockedTicks > 0);
                 buffer.writeEnumValue(mode);
             } else if (id == NET_BOX) {
-                box.writeData(buffer);
+                buffer.writeBoolean(box != null);
+                if (box != null) {
+                    box.toBytes(buffer);
+                }
                 buffer.writeBoolean(markerBox);
                 buffer.writeBoolean(addon != null);
                 if (addon != null) {
@@ -280,7 +280,7 @@ public class TileFiller extends TileBC_Neptune
                 lockedTicks = buffer.readBoolean() ? (byte) 1 : (byte) 0;
                 mode = buffer.readEnumValue(Mode.class);
             } else if (id == NET_BOX) {
-                box.readData(buffer);
+                box = buffer.readBoolean() ? new Box(buffer) : null;
                 markerBox = buffer.readBoolean();
                 if (buffer.readBoolean()) {
                     UUID volumeBoxId = buffer.readUniqueId();
@@ -347,7 +347,9 @@ public class TileFiller extends TileBC_Neptune
         nbt.setBoolean("finished", finished);
         nbt.setByte("lockedTicks", lockedTicks);
         nbt.setTag("mode", NBTUtilBC.writeEnum(mode));
-        nbt.setTag("box", box.writeToNBT());
+        if (box != null) {
+            nbt.setTag("box", box.writeToNbt());
+        }
         if (addon != null) {
             nbt.setUniqueId("addonVolumeBoxId", addon.volumeBox.id);
             nbt.setTag("addonSlot", NBTUtilBC.writeEnum(addon.getSlot()));
@@ -367,7 +369,7 @@ public class TileFiller extends TileBC_Neptune
         finished = nbt.getBoolean("finished");
         lockedTicks = nbt.getByte("lockedTicks");
         mode = Optional.ofNullable(NBTUtilBC.readEnum(nbt.getTag("mode"), Mode.class)).orElse(Mode.ON);
-        box.initialize(nbt.getCompoundTag("box"));
+        box = nbt.hasKey("box") ? new Box(nbt.getCompoundTag("box")) : null;
         if (nbt.hasKey("addonSlot") && nbt.hasKey("addonVolumeBoxId")) {
             addon = (AddonFillerPlanner) WorldSavedDataVolumeBoxes.get(world)
                 .getVolumeBoxFromId(Objects.requireNonNull(nbt.getUniqueId("addonVolumeBoxId"))) // FIXME: explain nullability problems
@@ -484,7 +486,7 @@ public class TileFiller extends TileBC_Neptune
 
     @Override
     public boolean hasBox() {
-        return addon != null || box.isInitialized();
+        return addon != null || box != null;
     }
 
     public boolean isValid() {

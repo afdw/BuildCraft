@@ -94,8 +94,11 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         new ResourceLocation("buildcraftbuilders:diggy_diggy_hole");
 
     private final MjBattery battery = new MjBattery(16000 * MjAPI.MJ);
-    public final Box frameBox = new Box();
-    private final Box miningBox = new Box();
+    public boolean valid = false;
+    @Nullable
+    public Box frameBox;
+    @Nullable
+    private Box miningBox;
     @Nullable
     private BoxIterator boxIterator;
     public final List<BlockPos> framePoses = new ArrayList<>();
@@ -125,7 +128,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         @Override
         public void notifyBlockUpdate(@Nonnull World world, @Nonnull BlockPos pos, @Nonnull IBlockState oldState, @Nonnull IBlockState newState,
                                       int flags) {
-            if (frameBox.isInitialized() && miningBox.isInitialized()) {
+            if (valid) {
                 if (frameBox.contains(pos)) {
                     check(pos);
                 } else if (miningBox.contains(pos)) {
@@ -306,9 +309,8 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
                     continue;
                 }
                 Box volBox = connection.getBox();
-                Box box2 = new Box();
-                box2.initialize(volBox);
-                if (!box2.isInitialized()) {
+                Box box2 = volBox;
+                if (volBox == null) {
                     continue;
                 }
                 if (pos.getY() != box2.min().getY()) {
@@ -323,7 +325,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
                 if (box2.size().getX() < 3 || box2.size().getZ() < 3) {
                     continue;
                 }
-                box2.expand(1);
+                box2 = box2.expand(1);
                 box2.setMin(box2.min().up());
                 if (box2.isOnEdge(pos)) {
                     min = volBox.min();
@@ -334,8 +336,6 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
             }
         }
         if (min == null || max == null) {
-            miningBox.reset();
-            frameBox.reset();
             switch (facing.getOpposite()) {
                 case DOWN:
                 case UP:
@@ -361,12 +361,12 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         if (max.getY() - min.getY() < 4) {
             max = new BlockPos(max.getX(), min.getY() + 4, max.getZ());
         }
-        frameBox.reset();
-        frameBox.setMin(min);
-        frameBox.setMax(max);
-        miningBox.reset();
-        miningBox.setMin(new BlockPos(min.getX() + 1, 0, min.getZ() + 1));
-        miningBox.setMax(new BlockPos(max.getX() - 1, max.getY() - 1, max.getZ() - 1));
+        frameBox = new Box(min, max);
+        miningBox = new Box(
+            new BlockPos(min.getX() + 1, 0, min.getZ() + 1),
+            new BlockPos(max.getX() - 1, max.getY() - 1, max.getZ() - 1)
+        );
+        valid = true;
         updatePoses();
     }
 
@@ -458,7 +458,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
     @Nullable
     @Override
     public Set<ChunkPos> getChunksToLoad() {
-        if (!miningBox.isInitialized()) {
+        if (!valid) {
             return null;
         }
         Set<ChunkPos> chunkPoses = new HashSet<>();
@@ -481,7 +481,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         frameBreakBlockPoses.clear();
         framePlaceFramePoses.clear();
         IBlockState state = world.getBlockState(pos);
-        if (state.getBlock() == BCBuildersBlocks.quarry && frameBox.isInitialized()) {
+        if (state.getBlock() == BCBuildersBlocks.quarry && valid) {
             List<BlockPos> blocksInArea = frameBox.getBlocksInArea();
             blocksInArea.sort(BlockUtil.uniqueBlockPosComparator(Comparator.comparingDouble(pos::distanceSq)));
             frameBoxPosesCount = blocksInArea.size();
@@ -526,7 +526,7 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
             return;
         }
 
-        if (!frameBox.isInitialized() || !miningBox.isInitialized()) {
+        if (!valid) {
             return;
         }
 
@@ -631,8 +631,10 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound nbt) {
         super.writeToNBT(nbt);
-        nbt.setTag("box", miningBox.writeToNBT());
-        nbt.setTag("frame", frameBox.writeToNBT());
+        if (valid) {
+            nbt.setTag("box", miningBox.writeToNbt());
+            nbt.setTag("frame", frameBox.writeToNbt());
+        }
         if (boxIterator != null) {
             nbt.setTag("boxIterator", boxIterator.writeToNbt());
         }
@@ -653,8 +655,9 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
     @Override
     public void readFromNBT(NBTTagCompound nbt) {
         super.readFromNBT(nbt);
-        miningBox.initialize(nbt.getCompoundTag("box"));
-        frameBox.initialize(nbt.getCompoundTag("frame"));
+        valid = nbt.hasKey("box");
+        miningBox = valid ? new Box(nbt.getCompoundTag("box")) : null;
+        frameBox = valid ? new Box(nbt.getCompoundTag("frame")) : null;
         boxIterator = BoxIterator.readFromNbt(nbt.getCompoundTag("boxIterator"));
         battery.deserializeNBT(nbt.getCompoundTag("battery"));
         if (nbt.hasKey("currentTask")) {
@@ -674,8 +677,11 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         super.writePayload(id, buffer, side);
         if (side == Side.SERVER) {
             if (id == NET_RENDER_DATA) {
-                frameBox.writeData(buffer);
-                miningBox.writeData(buffer);
+                buffer.writeBoolean(valid);
+                if (valid) {
+                    frameBox.toBytes(buffer);
+                    miningBox.toBytes(buffer);
+                }
                 buffer.writeBoolean(drillPos != null);
                 if (drillPos != null) {
                     MessageUtil.writeVec3d(buffer, drillPos);
@@ -698,8 +704,9 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
         super.readPayload(id, buffer, side, ctx);
         if (side == Side.CLIENT) {
             if (id == NET_RENDER_DATA) {
-                frameBox.readData(buffer);
-                miningBox.readData(buffer);
+                valid = buffer.readBoolean();
+                frameBox = valid ? new Box(buffer) : null;
+                miningBox = valid ? new Box(buffer) : null;
                 drillPos = buffer.readBoolean() ? MessageUtil.readVec3d(buffer) : null;
                 if (buffer.readBoolean()) {
                     int taskId = buffer.readByte();
@@ -723,12 +730,14 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
     public void getDebugInfo(List<String> left, List<String> right, EnumFacing side) {
         left.add("battery = " + battery.getDebugString());
         left.add("rate = " + LocaleUtil.localizeMjFlow(debugPowerRate));
-        left.add("frameBox");
-        left.add(" - min = " + frameBox.min());
-        left.add(" - max = " + frameBox.max());
-        left.add("miningBox:");
-        left.add(" - min = " + miningBox.min());
-        left.add(" - max = " + miningBox.max());
+        if (valid) {
+            left.add("frameBox");
+            left.add(" - min = " + frameBox.min());
+            left.add(" - max = " + frameBox.max());
+            left.add("miningBox:");
+            left.add(" - min = " + miningBox.min());
+            left.add(" - max = " + miningBox.max());
+        }
 
         left.add("firstCheckedPoses = " + firstCheckedPoses.size());
         left.add("frameBoxPosesCount = " + frameBoxPosesCount);

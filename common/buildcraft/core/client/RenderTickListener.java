@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3d;
 import javax.vecmath.Point3f;
@@ -56,7 +57,8 @@ public class RenderTickListener {
     private static final Vec3d[][][] MAP_LOCATION_POINT = new Vec3d[6][][];
     private static final String DIFF_START, DIFF_HEADER_FORMATTING;
 
-    private static final Box LAST_RENDERED_MAP_LOC = new Box();
+    @Nullable
+    private static Box lastRenderedMapLoc = null;
 
     static {
         double[][][] upFace = { // Comments for formatting
@@ -181,11 +183,8 @@ public class RenderTickListener {
             }
 
         } else if (type == MapLocationType.AREA) {
-
-            IBox box = ItemMapLocation.getAreaBox(stack);
-            LAST_RENDERED_MAP_LOC.reset();
-            LAST_RENDERED_MAP_LOC.initialize(box);
-            LaserBoxRenderer.renderLaserBoxStatic(LAST_RENDERED_MAP_LOC, BuildCraftLaserManager.STRIPES_WRITE, true);
+            lastRenderedMapLoc = new Box(ItemMapLocation.getAreaBox(stack));
+            LaserBoxRenderer.renderLaserBoxStatic(lastRenderedMapLoc, BuildCraftLaserManager.STRIPES_WRITE, true);
 
         } else if (type == MapLocationType.PATH) {
             List<BlockPos> path = BCCoreItems.mapLocation.getPath(stack);

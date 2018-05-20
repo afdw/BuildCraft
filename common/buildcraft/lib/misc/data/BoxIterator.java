@@ -9,6 +9,7 @@ package buildcraft.lib.misc.data;
 import java.util.Iterator;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumFacing;
@@ -25,6 +26,7 @@ public class BoxIterator implements Iterator<BlockPos> {
     private final BlockPos min, max;
     private final boolean invert, repeat;// TODO: remove repeat if its not used in the future
     private AxisOrder order;
+    @Nullable
     private BlockPos current;
 
     public BoxIterator(IBox box, AxisOrder order, boolean invert) {
@@ -35,10 +37,12 @@ public class BoxIterator implements Iterator<BlockPos> {
         this(min, max, invert, false, order, null);
     }
 
-    private BoxIterator(BlockPos min, BlockPos max, boolean invert, boolean repeat, AxisOrder order, BlockPos current) {
-        if (min == null) throw new NullPointerException("min");
-        if (max == null) throw new NullPointerException("max");
-        if (order == null) throw new NullPointerException("order");
+    private BoxIterator(BlockPos min,
+                        BlockPos max,
+                        boolean invert,
+                        boolean repeat,
+                        AxisOrder order,
+                        @Nullable BlockPos current) {
         this.min = min;
         this.max = max;
         this.invert = invert;
@@ -47,6 +51,7 @@ public class BoxIterator implements Iterator<BlockPos> {
         this.current = current == null ? getStart() : current;
     }
 
+    @Nullable
     public static BoxIterator readFromNbt(NBTTagCompound nbt) {
         BlockPos min = NBTUtilBC.readBlockPos(nbt.getTag("min"));
         BlockPos max = NBTUtilBC.readBlockPos(nbt.getTag("max"));
@@ -85,6 +90,7 @@ public class BoxIterator implements Iterator<BlockPos> {
         return VecUtil.replaceValue(toReplace, facing.getAxis(), VecUtil.getValue(with, facing.getAxis()));
     }
 
+    @Nullable
     public BlockPos getCurrent() {
         return current;
     }
@@ -113,6 +119,7 @@ public class BoxIterator implements Iterator<BlockPos> {
 
     /** Moves on to the next block. Unlike {@link #next()} this returns the one AFTER that one, so you cannot use
      * {@link #hasNext()}! */
+    @Nullable
     public BlockPos advance() {
         if (current == null) {
             current = getStart();

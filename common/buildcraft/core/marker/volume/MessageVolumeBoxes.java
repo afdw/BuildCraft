@@ -68,7 +68,7 @@ public class MessageVolumeBoxes implements IMessage {
             .map(buffer -> {
                 VolumeBox volumeBox;
                 try {
-                    volumeBox = new VolumeBox(BCLibProxy.getProxy().getClientWorld());
+                    volumeBox = new VolumeBox(BCLibProxy.getProxy().getClientWorld(), buffer);
                     volumeBox.fromBytes(buffer);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -85,7 +85,9 @@ public class MessageVolumeBoxes implements IMessage {
             for (VolumeBox clientVolumeBox : ClientVolumeBoxes.INSTANCE.volumeBoxes) {
                 if (clientVolumeBox.equals(entry.getValue())) {
                     try {
+                        VolumeBox readVolumeBox = new VolumeBox(BCLibProxy.getProxy().getClientWorld(), entry.getKey());
                         clientVolumeBox.fromBytes(entry.getKey());
+                        clientVolumeBox.box = readVolumeBox.box;
                     } catch (IOException io) {
                         throw new RuntimeException(io);
                     }

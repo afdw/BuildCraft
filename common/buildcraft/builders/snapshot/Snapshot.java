@@ -321,14 +321,13 @@ public abstract class Snapshot {
         public final BlockPos basePos;
         public final BlockPos offsetPos;
         public final Rotation rotation;
-        public final Box box = new Box();
+        public final Box box;
 
         protected BuildingInfo(BlockPos basePos, Rotation rotation) {
             this.basePos = basePos;
             this.offsetPos = basePos.add(offset.rotate(rotation));
             this.rotation = rotation;
-            this.box.extendToEncompass(toWorld(BlockPos.ORIGIN));
-            this.box.extendToEncompass(toWorld(size.subtract(VecUtil.POS_ONE)));
+            this.box = new Box(toWorld(BlockPos.ORIGIN), toWorld(size.subtract(VecUtil.POS_ONE)));
         }
 
         public BlockPos toWorld(BlockPos blockPos) {

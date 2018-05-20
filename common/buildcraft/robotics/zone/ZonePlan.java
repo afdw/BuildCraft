@@ -142,11 +142,6 @@ public class ZonePlan implements IZone {
     }
 
     @Override
-    public double distanceTo(BlockPos index) {
-        return Math.sqrt(distanceToSquared(index));
-    }
-
-    @Override
     public double distanceToSquared(BlockPos index) {
         double maxSqrDistance = Double.MAX_VALUE;
 

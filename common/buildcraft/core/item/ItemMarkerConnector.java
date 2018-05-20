@@ -184,8 +184,7 @@ public class ItemMarkerConnector extends ItemBC_Neptune {
                     bestVolumeBox.startChange(
                         bestVolumeBox.new Change(
                             player.getUniqueID(),
-                            min,
-                            max,
+                            bestVolumeBox.box,
                             held,
                             Math.max(1.5, bestDist + 0.5)
                         )

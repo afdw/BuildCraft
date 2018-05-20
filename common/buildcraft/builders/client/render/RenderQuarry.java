@@ -100,7 +100,7 @@ public class RenderQuarry extends TileEntitySpecialRenderer<TileQuarry> {
 
 
         profiler.endSection();
-        if (tile.frameBox.isInitialized()) {
+        if (tile.valid) {
             double yOffset = 1 + 4 / 16D;
 
             profiler.startSection("laser");
@@ -171,7 +171,7 @@ public class RenderQuarry extends TileEntitySpecialRenderer<TileQuarry> {
         GlStateManager.popMatrix();
         profiler.startSection("items");
 
-        if (tile.frameBox.isInitialized() && false) {
+        if (tile.valid && false) {
             TileQuarry.TaskAddFrame currentTask = (TileQuarry.TaskAddFrame) tile.currentTask;
             int index = tile.framePoses.indexOf(currentTask.framePos);
             if (index > 1) {

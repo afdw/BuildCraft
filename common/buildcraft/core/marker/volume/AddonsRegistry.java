@@ -20,7 +20,7 @@ public enum AddonsRegistry {
     private final List<AddonType> registry = new ArrayList<>();
 
     public void register(AddonType addonType) {
-        if (getAddonTypeByName(addonType.name) != null) {
+        if (getAddonTypeByName(addonType.name) == null) {
             registry.add(addonType);
         }
     }

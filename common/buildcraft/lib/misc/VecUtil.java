@@ -95,10 +95,10 @@ public class VecUtil {
     public static BlockPos min(BlockPos a, BlockPos b) {
         if (a == null) return b;
         if (b == null) return a;
-        return new BlockPos(//
-            Math.min(a.getX(), b.getX()),//
-            Math.min(a.getY(), b.getY()),//
-            Math.min(a.getZ(), b.getZ())//
+        return new BlockPos(
+            Math.min(a.getX(), b.getX()),
+            Math.min(a.getY(), b.getY()),
+            Math.min(a.getZ(), b.getZ())
         );
     }
 
@@ -113,10 +113,10 @@ public class VecUtil {
     public static BlockPos max(BlockPos a, BlockPos b) {
         if (a == null) return b;
         if (b == null) return a;
-        return new BlockPos(//
-            Math.max(a.getX(), b.getX()),//
-            Math.max(a.getY(), b.getY()),//
-            Math.max(a.getZ(), b.getZ())//
+        return new BlockPos(
+            Math.max(a.getX(), b.getX()),
+            Math.max(a.getY(), b.getY()),
+            Math.max(a.getZ(), b.getZ())
         );
     }
 

@@ -18,13 +18,13 @@ import javax.annotation.Nullable;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraft.world.storage.WorldSavedData;
 
 import buildcraft.lib.misc.NBTUtilBC;
+import buildcraft.lib.misc.data.Box;
 import buildcraft.lib.net.MessageManager;
 
 public class WorldSavedDataVolumeBoxes extends WorldSavedData {
@@ -83,11 +83,12 @@ public class WorldSavedDataVolumeBoxes extends WorldSavedData {
                 volumeBox.getChange().setPaused(true);
                 dirty.set(true);
             } else {
-                AxisAlignedBB oldAabb = volumeBox.box.getBoundingBox();
-                volumeBox.box.reset();
-                volumeBox.box.extendToEncompass(volumeBox.getChange().getHeld());
-                volumeBox.box.extendToEncompass(lookingAt);
-                if (!volumeBox.box.getBoundingBox().equals(oldAabb)) {
+                Box previousBox = volumeBox.box;
+                volumeBox.box = new Box(
+                    volumeBox.getChange().getHeld(),
+                    lookingAt
+                );
+                if (!volumeBox.box.equals(previousBox)) {
                     dirty.set(true);
                 }
             }
@@ -112,23 +113,25 @@ public class WorldSavedDataVolumeBoxes extends WorldSavedData {
         MessageManager.sendToDimension(new MessageVolumeBoxes(volumeBoxes), world.provider.getDimension());
     }
 
-    @SuppressWarnings("NullableProblems")
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound nbt) {
         nbt.setTag("volumeBoxes", NBTUtilBC.writeCompoundList(volumeBoxes.stream().map(VolumeBox::writeToNBT)));
         return nbt;
     }
 
-    @SuppressWarnings("NullableProblems")
     @Override
     public void readFromNBT(NBTTagCompound nbt) {
         volumeBoxes.clear();
         NBTUtilBC.readCompoundList(nbt.getTag("volumeBoxes"))
             .map(volumeBoxTag -> {
-                VolumeBox volumeBox = new VolumeBox(world);
-                volumeBox.readFromNBT(volumeBoxTag);
-                return volumeBox;
+                try {
+                    return new VolumeBox(world, volumeBoxTag);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return null;
             })
+            .filter(Objects::nonNull)
             .forEach(volumeBoxes::add);
     }
 

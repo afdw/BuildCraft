@@ -40,7 +40,7 @@ public class AdvDebuggerQuarry implements DetachedRenderer.IDetachedRenderer {
     @Override
     public void render(EntityPlayer player, float partialTicks) {
         TileQuarry tile = tileReference.get();
-        if (tile == null || !tile.frameBox.isInitialized()) {
+        if (tile == null || !tile.valid) {
             return;
         }
         List<ChunkPos> chunkPoses = new ArrayList<>(ChunkLoaderManager.getChunksToLoad(tile));

@@ -30,9 +30,7 @@ public class LaserBoxRenderer {
             return;
         }
 
-        makeLaserBox(box, type, center);
-
-        for (LaserData_BC8 data : box.laserData) {
+        for (LaserData_BC8 data : makeLaserBox(box, type, center)) {
             LaserRenderer_BC8.renderLaserStatic(data);
         }
     }
@@ -42,22 +40,15 @@ public class LaserBoxRenderer {
             return;
         }
 
-        makeLaserBox(box, type, center);
-
-        for (LaserData_BC8 data : box.laserData) {
+        for (LaserData_BC8 data : makeLaserBox(box, type, center)) {
             LaserRenderer_BC8.renderLaserDynamic(data, bb);
         }
     }
 
-    private static void makeLaserBox(Box box, LaserType type, boolean center) {
-        if (box.min().equals(box.lastMin) && box.max().equals(box.lastMax) && box.lastType == type
-            && box.laserData != null) {
-            return;
-        }
-
-        boolean renderX = center ? box.size().getX() > 1 : true;
-        boolean renderY = center ? box.size().getY() > 1 : true;
-        boolean renderZ = center ? box.size().getZ() > 1 : true;
+    private static LaserData_BC8[] makeLaserBox(Box box, LaserType type, boolean center) {
+        boolean renderX = !center || box.size().getX() > 1;
+        boolean renderY = !center || box.size().getY() > 1;
+        boolean renderZ = !center || box.size().getZ() > 1;
 
         Vec3d min = new Vec3d(box.min()).add(center ? VecUtil.VEC_HALF : Vec3d.ZERO);
         Vec3d max = new Vec3d(box.max()).add(center ? VecUtil.VEC_HALF : VecUtil.VEC_ONE);
@@ -113,10 +104,7 @@ public class LaserBoxRenderer {
             }
         }
 
-        box.laserData = datas.toArray(new LaserData_BC8[0]);
-        box.lastMin = box.min();
-        box.lastMax = box.max();
-        box.lastType = type;
+        return datas.toArray(new LaserData_BC8[0]);
     }
 
     private static LaserData_BC8 makeLaser(LaserType type, Vec3d min, Vec3d max, Axis axis) {

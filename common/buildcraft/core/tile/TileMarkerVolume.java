@@ -6,6 +6,7 @@ package buildcraft.core.tile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import javax.annotation.Nonnull;
 
@@ -160,13 +161,13 @@ public class TileMarkerVolume extends TileMarker<VolumeConnection> implements IT
     @Override
     public BlockPos min() {
         VolumeConnection connection = getCurrentConnection();
-        return connection == null ? getPos() : connection.getBox().min();
+        return connection == null ? getPos() : Optional.ofNullable(connection.getBox()).map(Box::min).orElse(getPos());
     }
 
     @Override
     public BlockPos max() {
         VolumeConnection connection = getCurrentConnection();
-        return connection == null ? getPos() : connection.getBox().max();
+        return connection == null ? getPos() : Optional.ofNullable(connection.getBox()).map(Box::max).orElse(getPos());
     }
 
     @Override
@@ -191,6 +192,9 @@ public class TileMarkerVolume extends TileMarker<VolumeConnection> implements IT
             return false;
         }
         Box box = connection.getBox();
+        if (box == null) {
+            return false;
+        }
         if (box.contains(pos)) {
             return false;
         }

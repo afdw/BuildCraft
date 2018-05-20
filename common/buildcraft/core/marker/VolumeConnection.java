@@ -9,6 +9,8 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.annotation.Nullable;
+
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumFacing.Axis;
 import net.minecraft.util.math.BlockPos;
@@ -25,10 +27,9 @@ import buildcraft.core.BCCoreConfig;
 import buildcraft.core.client.BuildCraftLaserManager;
 
 public class VolumeConnection extends MarkerConnection<VolumeConnection> {
-    private static final double RENDER_SCALE = 1 / 16.05;
-
     private final Set<BlockPos> makeup = new HashSet<>();
-    private final Box box = new Box();
+    @Nullable
+    private Box box;
 
     public static boolean tryCreateConnection(VolumeSubCache subCache, BlockPos from, BlockPos to) {
         if (canCreateConnection(subCache, from, to)) {
@@ -147,14 +148,18 @@ public class VolumeConnection extends MarkerConnection<VolumeConnection> {
     }
 
     private void createBox() {
-        box.reset();
-        for (BlockPos p : makeup) {
-            box.extendToEncompass(p);
+        box = null;
+        if (!makeup.isEmpty()) {
+            box = new Box(makeup.iterator().next(), makeup.iterator().next());
+            for (BlockPos p : makeup) {
+                box.extendToEncompass(p);
+            }
         }
     }
 
+    @Nullable
     public Box getBox() {
-        return new Box(box.min(), box.max());
+        return box;
     }
 
     // ###########
@@ -166,6 +171,8 @@ public class VolumeConnection extends MarkerConnection<VolumeConnection> {
     @Override
     @SideOnly(Side.CLIENT)
     public void renderInWorld() {
-        LaserBoxRenderer.renderLaserBoxStatic(box, BuildCraftLaserManager.MARKER_VOLUME_CONNECTED, true);
+        if (box != null) {
+            LaserBoxRenderer.renderLaserBoxStatic(box, BuildCraftLaserManager.MARKER_VOLUME_CONNECTED, true);
+        }
     }
 }

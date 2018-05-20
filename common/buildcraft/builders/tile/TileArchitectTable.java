@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
@@ -94,14 +95,15 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
     );
 
     private EnumSnapshotType snapshotType = EnumSnapshotType.BLUEPRINT;
-    public final Box box = new Box();
+    private boolean isValid = false;
+    @Nullable
+    public Box box;
     public boolean markerBox = false;
     private BitSet templateScannedBlocks;
     private final List<ISchematicBlock> blueprintScannedPalette = new ArrayList<>();
     private int[] blueprintScannedData;
     private final List<ISchematicEntity> blueprintScannedEntities = new ArrayList<>();
     private BoxIterator boxIterator;
-    private boolean isValid = false;
     private boolean scanning = false;
     public String name = "<unnamed>";
     public final DeltaInt deltaProgress = deltaManager.addDelta(
@@ -126,9 +128,7 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
         VolumeBox volumeBox = volumeBoxes.getVolumeBoxAt(offsetPos);
         TileEntity tile = world.getTileEntity(offsetPos);
         if (volumeBox != null) {
-            box.reset();
-            box.setMin(volumeBox.box.min());
-            box.setMax(volumeBox.box.max());
+            box = volumeBox.box;
             isValid = true;
             volumeBox.locks.add(
                 new Lock(
@@ -144,9 +144,7 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
             sendNetworkUpdate(NET_BOX);
         } else if (tile instanceof IAreaProvider) {
             IAreaProvider provider = (IAreaProvider) tile;
-            box.reset();
-            box.setMin(provider.min());
-            box.setMax(provider.max());
+            box = new Box(provider);
             markerBox = true;
             isValid = true;
             provider.removeFromWorld();
@@ -163,7 +161,7 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
         deltaManager.tick();
 
         if (world.isRemote) {
-            if (box.isInitialized()) {
+            if (isValid) {
                 ClientArchitectTables.BOXES.put(box.getBoundingBox(), ClientArchitectTables.START_BOX_VALUE);
             }
             return;
@@ -319,7 +317,10 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
                 writePayload(NET_BOX, buffer, side);
                 buffer.writeString(name);
             } else if (id == NET_BOX) {
-                box.writeData(buffer);
+                buffer.writeBoolean(isValid);
+                if (isValid) {
+                    box.toBytes(buffer);
+                }
                 buffer.writeBoolean(markerBox);
             }
         }
@@ -333,7 +334,8 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
                 readPayload(NET_BOX, buffer, side, ctx);
                 name = buffer.readString();
             } else if (id == NET_BOX) {
-                box.readData(buffer);
+                isValid = buffer.readBoolean();
+                box = isValid ? new Box(buffer) : null;
                 markerBox = buffer.readBoolean();
             } else if (id == NET_SCAN) {
                 ClientArchitectTables.SCANNED_BLOCKS.put(
@@ -347,14 +349,14 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound nbt) {
         super.writeToNBT(nbt);
-        nbt.setTag("box", box.writeToNBT());
+        nbt.setBoolean("isValid", isValid);
+        nbt.setTag("box", box.writeToNbt());
         nbt.setBoolean("markerBox", markerBox);
         if (boxIterator != null) {
             nbt.setTag("iter", boxIterator.writeToNbt());
         }
         nbt.setBoolean("scanning", scanning);
         nbt.setTag("snapshotType", NBTUtilBC.writeEnum(snapshotType));
-        nbt.setBoolean("isValid", isValid);
         nbt.setString("name", name);
         return nbt;
     }
@@ -362,22 +364,24 @@ public class TileArchitectTable extends TileBC_Neptune implements ITickable, IDe
     @Override
     public void readFromNBT(NBTTagCompound nbt) {
         super.readFromNBT(nbt);
-        box.initialize(nbt.getCompoundTag("box"));
+        isValid = nbt.getBoolean("isValid");
+        box = isValid ? new Box(nbt.getCompoundTag("box")) : null;
         markerBox = nbt.getBoolean("markerBox");
         if (nbt.hasKey("iter")) {
             boxIterator = BoxIterator.readFromNbt(nbt.getCompoundTag("iter"));
         }
         scanning = nbt.getBoolean("scanning");
         snapshotType = NBTUtilBC.readEnum(nbt.getTag("snapshotType"), EnumSnapshotType.class);
-        isValid = nbt.getBoolean("isValid");
         name = nbt.getString("name");
     }
 
     @Override
     public void getDebugInfo(List<String> left, List<String> right, EnumFacing side) {
-        left.add("box:");
-        left.add(" - min = " + box.min());
-        left.add(" - max = " + box.max());
+        if (isValid) {
+            left.add("box:");
+            left.add(" - min = " + box.min());
+            left.add(" - max = " + box.max());
+        }
         left.add("scanning = " + scanning);
         left.add("current = " + (boxIterator == null ? null : boxIterator.getCurrent()));
     }
