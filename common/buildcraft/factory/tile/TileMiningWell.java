@@ -6,8 +6,6 @@
 
 package buildcraft.factory.tile;
 
-import javax.annotation.Nonnull;
-
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
@@ -36,14 +34,14 @@ public class TileMiningWell extends TileMiner {
     private final SafeTimeTracker tracker = new SafeTimeTracker(256);
     private final IWorldEventListener worldEventListener = new WorldEventListenerAdapter() {
         @Override
-        public void notifyBlockUpdate(@Nonnull World world,
-                                      @Nonnull BlockPos pos,
-                                      @Nonnull IBlockState oldState,
-                                      @Nonnull IBlockState newState,
+        public void notifyBlockUpdate(World world,
+                                      BlockPos eventPos,
+                                      IBlockState oldState,
+                                      IBlockState newState,
                                       int flags) {
-            if (pos.getX() == TileMiningWell.this.pos.getX() &&
-                pos.getY() <= TileMiningWell.this.pos.getY() &&
-                pos.getZ() == TileMiningWell.this.pos.getZ()) {
+            if (eventPos.getX() == pos.getX() &&
+                eventPos.getY() <= pos.getY() &&
+                eventPos.getZ() == pos.getZ()) {
                 shouldCheck = true;
             }
         }

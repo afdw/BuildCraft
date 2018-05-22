@@ -63,10 +63,10 @@ public abstract class SnapshotBuilder<T extends ITileForSnapshotBuilder> impleme
     protected final T tile;
     private final IWorldEventListener worldEventListener = new WorldEventListenerAdapter() {
         @Override
-        public void notifyBlockUpdate(@Nonnull World world,
-                                      @Nonnull BlockPos pos,
-                                      @Nonnull IBlockState oldState,
-                                      @Nonnull IBlockState newState,
+        public void notifyBlockUpdate(World world,
+                                      BlockPos pos,
+                                      IBlockState oldState,
+                                      IBlockState newState,
                                       int flags) {
             if (tile.getBuilder() == SnapshotBuilder.this && getBuildingInfo() != null && getBuildingInfo().box.contains(pos)) {
                 if (check(pos)) {

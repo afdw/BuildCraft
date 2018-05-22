@@ -126,7 +126,10 @@ public class TileQuarry extends TileBC_Neptune implements ITickable, IDebuggable
     public List<AxisAlignedBB> collisionBoxes = ImmutableList.of();
     private final IWorldEventListener worldEventListener = new WorldEventListenerAdapter() {
         @Override
-        public void notifyBlockUpdate(@Nonnull World world, @Nonnull BlockPos pos, @Nonnull IBlockState oldState, @Nonnull IBlockState newState,
+        public void notifyBlockUpdate(World world,
+                                      BlockPos pos,
+                                      IBlockState oldState,
+                                      IBlockState newState,
                                       int flags) {
             if (valid) {
                 if (frameBox.contains(pos)) {

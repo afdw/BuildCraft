@@ -17,15 +17,16 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import buildcraft.api.core.IBox;
+
 import buildcraft.lib.client.render.laser.LaserData_BC8.LaserType;
 import buildcraft.lib.misc.VecUtil;
-import buildcraft.lib.misc.data.Box;
 
 @SideOnly(Side.CLIENT)
 public class LaserBoxRenderer {
     private static final double RENDER_SCALE = 1 / 16.05;
 
-    public static void renderLaserBoxStatic(Box box, LaserType type, boolean center) {
+    public static void renderLaserBoxStatic(IBox box, LaserType type, boolean center) {
         if (box == null || box.min() == null || box.max() == null) {
             return;
         }
@@ -35,7 +36,7 @@ public class LaserBoxRenderer {
         }
     }
 
-    public static void renderLaserBoxDynamic(Box box, LaserType type, BufferBuilder bb, boolean center) {
+    public static void renderLaserBoxDynamic(IBox box, LaserType type, BufferBuilder bb, boolean center) {
         if (box == null || box.min() == null || box.max() == null) {
             return;
         }
@@ -45,7 +46,7 @@ public class LaserBoxRenderer {
         }
     }
 
-    private static LaserData_BC8[] makeLaserBox(Box box, LaserType type, boolean center) {
+    private static LaserData_BC8[] makeLaserBox(IBox box, LaserType type, boolean center) {
         boolean renderX = !center || box.size().getX() > 1;
         boolean renderY = !center || box.size().getY() > 1;
         boolean renderZ = !center || box.size().getZ() > 1;

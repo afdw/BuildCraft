@@ -57,9 +57,6 @@ public class RenderTickListener {
     private static final Vec3d[][][] MAP_LOCATION_POINT = new Vec3d[6][][];
     private static final String DIFF_START, DIFF_HEADER_FORMATTING;
 
-    @Nullable
-    private static Box lastRenderedMapLoc = null;
-
     static {
         double[][][] upFace = { // Comments for formatting
             { { 0.5, 0.9, 0.5 }, { 0.5, 1.6, 0.5 } }, // Main line
@@ -183,9 +180,11 @@ public class RenderTickListener {
             }
 
         } else if (type == MapLocationType.AREA) {
-            lastRenderedMapLoc = new Box(ItemMapLocation.getAreaBox(stack));
-            LaserBoxRenderer.renderLaserBoxStatic(lastRenderedMapLoc, BuildCraftLaserManager.STRIPES_WRITE, true);
-
+            LaserBoxRenderer.renderLaserBoxStatic(
+                ItemMapLocation.getAreaBox(stack),
+                BuildCraftLaserManager.STRIPES_WRITE,
+                true
+            );
         } else if (type == MapLocationType.PATH) {
             List<BlockPos> path = BCCoreItems.mapLocation.getPath(stack);
             if (path != null && path.size() > 1) {

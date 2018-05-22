@@ -29,8 +29,11 @@ public class LocalBlockUpdateNotifier {
 
         IWorldEventListener worldEventListener = new WorldEventListenerAdapter() {
             @Override
-            public void notifyBlockUpdate(@Nonnull World world, @Nonnull BlockPos eventPos, @Nonnull IBlockState oldState,
-                                          @Nonnull IBlockState newState, int flags) {
+            public void notifyBlockUpdate(World world,
+                                          BlockPos eventPos,
+                                          IBlockState oldState,
+                                          IBlockState newState,
+                                          int flags) {
                 notifySubscribersInRange(world, eventPos, oldState, newState, flags);
             }
         };

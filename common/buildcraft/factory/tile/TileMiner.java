@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.List;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTUtil;
@@ -44,6 +45,7 @@ public abstract class TileMiner extends TileBC_Neptune implements ITickable, IDe
     public static final int NET_WANTED_Y = IDS.allocId("WANTED_Y");
 
     protected int progress = 0;
+    @Nullable
     protected BlockPos currentPos = null;
 
     private int wantedLength = 0;
@@ -129,6 +131,7 @@ public abstract class TileMiner extends TileBC_Neptune implements ITickable, IDe
         }
     }
 
+    @Nullable
     protected BlockPos getTargetPos() {
         return currentPos;
     }

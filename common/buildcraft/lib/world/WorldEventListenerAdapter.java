@@ -6,7 +6,6 @@
 
 package buildcraft.lib.world;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import net.minecraft.block.state.IBlockState;
@@ -20,15 +19,15 @@ import net.minecraft.world.World;
 
 public class WorldEventListenerAdapter implements IWorldEventListener {
     @Override
-    public void notifyBlockUpdate(@Nonnull World world,
-                                  @Nonnull BlockPos pos,
-                                  @Nonnull IBlockState oldState,
-                                  @Nonnull IBlockState newState,
+    public void notifyBlockUpdate(World world,
+                                  BlockPos pos,
+                                  IBlockState oldState,
+                                  IBlockState newState,
                                   int flags) {
     }
 
     @Override
-    public void notifyLightSet(@Nonnull BlockPos pos) {
+    public void notifyLightSet(BlockPos pos) {
     }
 
     @Override
@@ -37,8 +36,8 @@ public class WorldEventListenerAdapter implements IWorldEventListener {
 
     @Override
     public void playSoundToAllNearExcept(@Nullable EntityPlayer player,
-                                         @Nonnull SoundEvent sound,
-                                         @Nonnull SoundCategory category,
+                                         SoundEvent sound,
+                                         SoundCategory category,
                                          double x,
                                          double y,
                                          double z,
@@ -47,7 +46,7 @@ public class WorldEventListenerAdapter implements IWorldEventListener {
     }
 
     @Override
-    public void playRecord(@Nonnull SoundEvent sound, @Nonnull BlockPos pos) {
+    public void playRecord(SoundEvent sound, BlockPos pos) {
     }
 
     @Override
@@ -59,7 +58,7 @@ public class WorldEventListenerAdapter implements IWorldEventListener {
                               double xSpeed,
                               double ySpeed,
                               double zSpeed,
-                              @Nonnull int... parameters) {
+                              int... parameters) {
     }
 
     @Override
@@ -72,26 +71,26 @@ public class WorldEventListenerAdapter implements IWorldEventListener {
                               double xSpeed,
                               double ySpeed,
                               double zSpeed,
-                              @Nonnull int... parameters) {
+                              int... parameters) {
     }
 
     @Override
-    public void onEntityAdded(@Nonnull Entity entity) {
+    public void onEntityAdded(Entity entity) {
     }
 
     @Override
-    public void onEntityRemoved(@Nonnull Entity entity) {
+    public void onEntityRemoved(Entity entity) {
     }
 
     @Override
-    public void broadcastSound(int soundID, @Nonnull BlockPos pos, int data) {
+    public void broadcastSound(int soundID, BlockPos pos, int data) {
     }
 
     @Override
-    public void playEvent(@Nullable EntityPlayer player, int type, @Nonnull BlockPos blockPos, int data) {
+    public void playEvent(EntityPlayer player, int type, BlockPos blockPos, int data) {
     }
 
     @Override
-    public void sendBlockBreakProgress(int breakerId, @Nonnull BlockPos pos, int progress) {
+    public void sendBlockBreakProgress(int breakerId, BlockPos pos, int progress) {
     }
 }
